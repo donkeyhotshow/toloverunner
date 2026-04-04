@@ -6,15 +6,27 @@
  * Solves "Ghost Hits" and "Pass Through" bugs using Sweep logic.
  */
 
-import { GameObject, ObjectType } from '../../types';
+import { GameObject, ObjectType, WormTypes, BacteriumTypes, VirusTypes, ImmuneTypes, MembraneTypes } from '../../types';
 
 import { COLLISION_CONFIG } from '../../constants/physicsConfig';
+
+/** Module-level Sets for O(1) type lookups in hot collision path (GDD alignment) */
+const WORM_TYPE_SET = new Set<string>([...WormTypes]);
+const BACTERIUM_TYPE_SET = new Set<string>([...BacteriumTypes]);
+const VIRUS_COL_SET = new Set<string>([...VirusTypes]);
+const IMMUNE_TYPE_SET = new Set<string>([...ImmuneTypes]);
+const MEMBRANE_TYPE_SET = new Set<string>([...MembraneTypes]);
+
+/** Y above which player bounces off worm (trampoline zone) instead of taking a hit */
+const TRAMPOLINE_MIN_Y = 0.3;
 
 export interface CollisionResult {
     hit: boolean;
     graze: boolean;
     object: GameObject | null;
     jumpedOverObject?: GameObject | null;
+    /** GDD: WormType (TRAMPOLINE) that the player landed on top of — triggers bounce. */
+    trampolineObject?: GameObject | null;
 }
 
 export class CollisionSystem {
@@ -118,7 +130,7 @@ export class CollisionSystem {
         isDashing: boolean = false,
         isSliding: boolean = false
     ): CollisionResult {
-        const result = { hit: false, graze: false, object: null, jumpedOverObject: null } as CollisionResult;
+        const result = { hit: false, graze: false, object: null, jumpedOverObject: null, trampolineObject: null } as CollisionResult;
         result.hit = false;
         result.graze = false;
         result.object = null;
@@ -138,7 +150,10 @@ export class CollisionSystem {
 
             const isObstacle = obj.type === ObjectType.OBSTACLE || 
                              obj.type === ObjectType.VIRUS_KILLER || 
-                             obj.type === ObjectType.IMMUNE_CELL;
+                             obj.type === ObjectType.IMMUNE_CELL ||
+                             // GDD: all VirusTypes and ImmuneTypes are lethal obstacles with correct (narrow) hitbox
+                             VIRUS_COL_SET.has(obj.type) ||
+                             IMMUNE_TYPE_SET.has(obj.type);
             const isSpecialObstacle = obj.type === ObjectType.OBSTACLE_JUMP ||
                 obj.type === ObjectType.OBSTACLE_SLIDE ||
                 obj.type === ObjectType.OBSTACLE_DODGE ||
@@ -147,7 +162,11 @@ export class CollisionSystem {
                 obj.type === ObjectType.CELL_MEMBRANE ||
                 obj.type === ObjectType.LOW ||
                 obj.type === ObjectType.HIGH ||
-                obj.type === ObjectType.COMBAT;
+                obj.type === ObjectType.COMBAT ||
+                // GDD: WormTypes are TRAMPOLINE obstacles, BacteriumTypes are jumpable, MembraneTypes are walls
+                WORM_TYPE_SET.has(obj.type) ||
+                BACTERIUM_TYPE_SET.has(obj.type) ||
+                MEMBRANE_TYPE_SET.has(obj.type);
 
             // Глубина по Z в зависимости от типа (для стабильного CCD)
             let objDepth = CollisionSystem.OBSTACLE_DEPTH_Z;
@@ -200,12 +219,17 @@ export class CollisionSystem {
                 }
                 // Else: HIT (Head bangs on it) — визуально барьер висит высоко
             }
-            // 🛑 OBSTACLE_JUMP / GLOBUS_WORM / LOW / COMBAT: Must jump over (Player Y Check)
+            // 🛑 OBSTACLE_JUMP / GLOBUS_WORM / WormTypes / BacteriumTypes / VirusTypes / ImmuneTypes / LOW / COMBAT: Must jump over
             else if (obj.type === ObjectType.OBSTACLE_JUMP || obj.type === ObjectType.OBSTACLE || 
                      obj.type === ObjectType.GLOBUS_WORM || obj.type === ObjectType.VIRUS_KILLER || 
                      obj.type === ObjectType.IMMUNE_CELL || obj.type === ObjectType.BACTERIA_BLOCKER ||
-                     obj.type === ObjectType.LOW || obj.type === ObjectType.COMBAT) {
-                const isJumpable = obj.type === ObjectType.OBSTACLE_JUMP || obj.type === ObjectType.GLOBUS_WORM || obj.type === ObjectType.BACTERIA_BLOCKER || obj.type === ObjectType.LOW || obj.type === ObjectType.COMBAT;
+                     obj.type === ObjectType.LOW || obj.type === ObjectType.COMBAT ||
+                     WORM_TYPE_SET.has(obj.type) || BACTERIUM_TYPE_SET.has(obj.type) ||
+                     VIRUS_COL_SET.has(obj.type) || IMMUNE_TYPE_SET.has(obj.type)) {
+                const isJumpable = obj.type === ObjectType.OBSTACLE_JUMP ||
+                    obj.type === ObjectType.GLOBUS_WORM || obj.type === ObjectType.BACTERIA_BLOCKER ||
+                    obj.type === ObjectType.LOW || obj.type === ObjectType.COMBAT ||
+                    WORM_TYPE_SET.has(obj.type) || BACTERIUM_TYPE_SET.has(obj.type);
                 const clearHeight = (isJumpable ? CollisionSystem.OBSTACLE_JUMP_HEIGHT : CollisionSystem.JUMP_CLEAR_HEIGHT) * obstacleHeight;
                 if (playerY > objY + clearHeight) {
                     if (obj.type === ObjectType.BACTERIA_BLOCKER) {
@@ -213,9 +237,16 @@ export class CollisionSystem {
                     }
                     continue; // Jumped over safely
                 }
+                // GDD ObstacleType.TRAMPOLINE: WormTypes in landing zone → bounce, no damage
+                if (WORM_TYPE_SET.has(obj.type) && playerY > objY + TRAMPOLINE_MIN_Y) {
+                    result.trampolineObject = obj;
+                    continue; // Trampoline bounce, no hit
+                }
             }
-            // 🛑 OBSTACLE_DODGE / CELL_MEMBRANE / BACILLUS: Tall Wall (Cannot Jump Over)
-            else if (obj.type === ObjectType.OBSTACLE_DODGE || obj.type === ObjectType.CELL_MEMBRANE || (obj.type as ObjectType) === ObjectType.BACILLUS_MAGNUS) {
+            // 🛑 OBSTACLE_DODGE / CELL_MEMBRANE / BACILLUS / MembraneTypes: Tall Wall (Cannot Jump Over)
+            else if (obj.type === ObjectType.OBSTACLE_DODGE || obj.type === ObjectType.CELL_MEMBRANE ||
+                     (obj.type as ObjectType) === ObjectType.BACILLUS_MAGNUS ||
+                     MEMBRANE_TYPE_SET.has(obj.type)) {
                 // No Y escape — only lane dodge
             }
 

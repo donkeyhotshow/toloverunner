@@ -7,12 +7,17 @@ import { useStore } from '../../../store';
 import { LANE_WIDTH, SAFETY_CONFIG } from '../../../constants';
 import { safeDeltaTime } from '../../../utils/safeMath';
 import { validateLane } from '../../../utils/laneUtils';
-import { GameObject, ObjectType, VirusTypes } from '../../../types';
+import { GameObject, ObjectType, VirusTypes, WormTypes, BacteriumTypes, ImmuneTypes } from '../../../types';
 import { gameObjectPool } from '../SharedPool';
 // import { getPerformanceManager } from '../../../infrastructure/performance/PerformanceManager'; // Unused
+import { eventBus } from '../../../utils/eventBus';
 
 /** GDD: all VirusTypes are lethal obstacles. Pre-built Set for O(1) lookup in hot collision path. */
 const VIRUS_TYPE_SET = new Set<string>(VirusTypes);
+/** Pre-built Sets for non-pickup enemy types (used in magnet exclusion and fear mechanic). */
+const WORM_TYPE_SET_GP = new Set<string>(WormTypes);
+const BACTERIUM_TYPE_SET_GP = new Set<string>(BacteriumTypes);
+const IMMUNE_TYPE_SET_GP = new Set<string>(ImmuneTypes);
 
 import { useCombatSystem } from '../../Gameplay/Combat/useCombatSystem';
 
@@ -184,7 +189,12 @@ export const useGamePhysics = () => {
                             obj.type === ObjectType.OBSTACLE ||
                             obj.type === ObjectType.OBSTACLE_JUMP ||
                             obj.type === ObjectType.OBSTACLE_SLIDE ||
-                            obj.type === ObjectType.OBSTACLE_DODGE;
+                            obj.type === ObjectType.OBSTACLE_DODGE ||
+                            // GDD: viruses, worms, bacteria and immune cells should NOT be pulled toward player
+                            VIRUS_TYPE_SET.has(obj.type) ||
+                            WORM_TYPE_SET_GP.has(obj.type) ||
+                            BACTERIUM_TYPE_SET_GP.has(obj.type) ||
+                            IMMUNE_TYPE_SET_GP.has(obj.type);
                         if (isHarmful) continue;
 
                         const ox = obj.position[0];
@@ -247,7 +257,12 @@ export const useGamePhysics = () => {
                 obj.type === ObjectType.VIRUS_KILLER_LOW ||
                 obj.type === ObjectType.VIRUS_KILLER_HIGH ||
                 obj.type === ObjectType.IMMUNE_PATROL ||
-                obj.type === ObjectType.MEMBRANE_WALL;
+                obj.type === ObjectType.MEMBRANE_WALL ||
+                // GDD: all VirusTypes/WormTypes/BacteriumTypes/ImmuneTypes trigger camera fear
+                VIRUS_TYPE_SET.has(obj.type) ||
+                WORM_TYPE_SET_GP.has(obj.type) ||
+                BACTERIUM_TYPE_SET_GP.has(obj.type) ||
+                IMMUNE_TYPE_SET_GP.has(obj.type);
 
             if (isHarmful) {
                 // const objZ = obj.position[2] + totalDistanceRef.current; // Unused
@@ -300,7 +315,11 @@ export const useGamePhysics = () => {
                     lives
                 } = store;
 
-                const willTakeDamage = !isImmortalityActive && !isInvincible && lives > 0 && !shieldActive;
+                // GDD: VirusTypes bypass shield → always deal fatal damage.
+                // Even if shieldActive, viruses still kill → visual feedback must still play.
+                const isVirusHit = VIRUS_TYPE_SET.has(obj.type);
+                const willTakeDamage = isVirusHit ||
+                    (!isImmortalityActive && !isInvincible && lives > 0 && !shieldActive);
 
                 // Всегда убираем препятствие при столкновении
                 obj.active = false;
@@ -423,6 +442,18 @@ export const useGamePhysics = () => {
                     detail: { position: [pos.x, pos.y, pos.z] }
                 }));
             }
+        }
+
+        // GDD ObstacleType.TRAMPOLINE: WormType contact from above → bounce player upward + BOING!
+        if (collision?.trampolineObject) {
+            const playerPhysics = physicsEngine.getPlayerPhysics();
+            const bounceForce = playerPhysics.config.jumpForce * 1.3;
+            playerPhysics.velocity.y = Math.max(playerPhysics.velocity.y, bounceForce);
+            playerPhysics.isGrounded = false;
+            playerPhysics.isJumping = true;
+            playerPhysics.jumpsRemaining = 2; // Restore jump after bounce
+            eventBus.emit('player:jump', undefined); // Triggers BOING! in ComicPopupSystem
+            store.bacteriaJumpBonus(); // Score bonus for worm bounce
         }
     };
 
