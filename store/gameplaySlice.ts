@@ -12,6 +12,9 @@ import { debugLog } from '../utils/debug';
 
 const pendingGameplayTimeouts: ReturnType<typeof setTimeout>[] = [];
 
+/** GDD: all VirusTypes cause instant death and ignore MEMBRANE_SHIELD. Pre-built Set for O(1) lookup. */
+const VIRUS_TYPE_SET = new Set<string | number>(VirusTypes);
+
 function registerGameplayTimeout(id: ReturnType<typeof setTimeout>): void {
     pendingGameplayTimeouts.push(id);
 }
@@ -149,8 +152,7 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
             const { isImmortalityActive, isInvincible, lives, shieldActive } = get();
 
             // GDD: Віруси — мгновенна смерть, ігнорують щит (MEMBRANE_SHIELD не захищає від Вірусів)
-            const virusTypeValues: ReadonlyArray<string> = [...VirusTypes];
-            const ignoresShield = !!obj?.type && (virusTypeValues as ReadonlyArray<unknown>).includes(obj.type);
+            const ignoresShield = !!obj?.type && VIRUS_TYPE_SET.has(obj.type);
 
             // Если активен щит (Hoverboard), он защищает от 1 удара и лопается
             if (shieldActive && !ignoresShield) {

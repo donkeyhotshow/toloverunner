@@ -11,6 +11,8 @@ import { GameObject, ObjectType, VirusTypes } from '../../../types';
 import { gameObjectPool } from '../SharedPool';
 // import { getPerformanceManager } from '../../../infrastructure/performance/PerformanceManager'; // Unused
 
+/** GDD: all VirusTypes are lethal obstacles. Pre-built Set for O(1) lookup in hot collision path. */
+const VIRUS_TYPE_SET = new Set<string>(VirusTypes);
 
 import { useCombatSystem } from '../../Gameplay/Combat/useCombatSystem';
 
@@ -288,7 +290,7 @@ export const useGamePhysics = () => {
                 obj.type === ObjectType.IMMUNE_PATROL ||
                 obj.type === ObjectType.MEMBRANE_WALL ||
                 // GDD: всі типи Вірусів — смертельні перешкоди
-                (VirusTypes as ReadonlyArray<string>).includes(obj.type);
+                VIRUS_TYPE_SET.has(obj.type);
 
             if (isObstacleType) {
                 const {
