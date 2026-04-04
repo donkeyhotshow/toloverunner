@@ -3,12 +3,64 @@
 
 ---
 
-**Дата аудита:** 24 января 2026 (актуализировано 2026-03-08)  
-**Версия проекта:** v2.4.0  
+**Дата аудита:** 24 января 2026 (актуализировано 2026-04-04)  
+**Версия проекта:** v2.4.1  
 **Аналитик:** Senior Technical Artist + Lead Game Designer + QA Automation Engineer  
 **Тип аудита:** Static Code Analysis (без визуальных материалов)
 
 **Стабилизация (2026-03-08):** Принята стратегия по [ADR 0001](../../adr/0001-stabilization-strategy.md). Актуальные baseline: [ts-baseline-20260308.md](./ts-baseline-20260308.md), [ESLINT_BASELINE.md](./ESLINT_BASELINE.md). CI: type-check, lint, test, test:e2e обязательны для каждого PR.
+
+---
+
+## 🧩 Project Health Status — v2.4.1 (2026-04-04)
+
+| Категория | Статус (1–10) | Краткое описание |
+|---|---|---|
+| Architecture | 8 | Хорошая модульность core/store/components; ADR соблюдается; `gameplaySlice` разбит на 4 суб-модуля. |
+| Gameplay / Physics | 8 | GDD-hitbox нормализованы, `VIRUS_COL_SET` корректен, `trampolineObject` в CollisionResult. Нет drift за MAX_SPEED (подтверждён smoke-тестом). |
+| Visuals / Three.js | 9 | Vignette-пульс живой (`useFrame`+`vignetteRef`), CameraController без `setTimeout`, нет `setState` в R3F loop. |
+| QA / Tests | 6 | `PlayerPhysics.test.ts` раскрыт и расширен до 5 тестов; добавлен speedDrift smoke-тест. `GAMEPLAY_TESTING_CHECKLIST` не заполнен реальными результатами. |
+
+### 📊 Подробная оценка (v2.4.1)
+
+- **Architecture — 8/10**:
+  - ✅ плюсы: `store/gameplaySlice.ts` реорганизован: суб-модули `speedActions`, `comboActions`, `powerupActions`, `damageActions` в `store/gameplay/`; внешний API `GameplaySlice` не изменён.
+  - ✅ плюсы: `AppProviders.tsx` вынесен из App.tsx; `App.tsx` стал чистым оркестратором.
+  - ✅ плюсы: 28 папок `core/` — отличная гранулярность.
+  - ⚠️ минусы: `App.tsx` (330 стр.) ещё содержит много inline-логики.
+  - ⚠️ минусы: Два аудио-класса (`DynamicAudioManager` внутри `UnifiedAudioManager`) — дублирование снято на уровне public API, но классы остаются.
+
+- **Gameplay / Physics — 8/10**:
+  - ✅ плюсы: `collectCoin` использует fixed-point арифметику (x1000 round), что устраняет float-drift.
+  - ✅ плюсы: `speedDrift.test.ts` подтверждает: `speed ≤ MAX_SPEED` после 2000+ монет.
+  - ✅ плюсы: `VIRUS_COL_SET` охватывает все `VirusTypes`, shield-bypass работает корректно.
+  - ⚠️ минусы: `PlayerPhysics.test.ts` ранее был полностью `describe.skip` — исправлено в v2.4.1.
+  - ⚠️ минусы: Нет E2E-теста на игру 30+ минут с мониторингом FPS и памяти.
+
+- **Visuals / Three.js — 9/10**:
+  - ✅ плюсы: Все 5 R3F-багов v2.4.1 исправлены (CHANGELOG): vignette, RAF-decay, setBonusFlash, Dutch-tilt, THREE import.
+  - ✅ плюсы: `PostProcessing.tsx` (94 стр.) — компактный, `useFrame` без `setState`.
+  - ⚠️ минусы: `InstancedLevelObjects.tsx` — stale deps не верифицированы после рефактора.
+
+- **QA / Tests — 6/10**:
+  - ✅ плюсы: CI-пайплайн: `type-check → lint → security:audit → test → test:e2e`.
+  - ✅ плюсы: `CollisionSystem.test.ts` — 5 сценариев (hit, inactive, range, graze, pickup).
+  - ✅ плюсы: `PlayerPhysics.test.ts` — 5 тестов: init, jump, double-jump, gravity, grounded reset.
+  - ✅ плюсы: `speedDrift.test.ts` — 4 smoke-теста на дрейф скорости.
+  - ⚠️ минусы: `GAMEPLAY_TESTING_CHECKLIST.md` — шаблон с пустыми `___` полями (нет реального QA-прогона).
+  - ⚠️ минусы: Нет stress-теста на 30+ минут с мониторингом памяти.
+
+### 🛠 Рекомендации (актуальные после v2.4.1)
+
+1. ~~Разделить `store/gameplaySlice.ts`~~ — ✅ **Выполнено** (суб-модули в `store/gameplay/`).
+2. ~~Снять `describe.skip` с `PlayerPhysics.test.ts`~~ — ✅ **Выполнено** (5 тестов).
+3. ~~Добавить drift-speed smoke-тест~~ — ✅ **Выполнено** (`tests/core/gameplay/speedDrift.test.ts`).
+4. ~~Вынести AppProviders из App.tsx~~ — ✅ **Выполнено** (`components/System/AppProviders.tsx`).
+5. **[TODO]** Добавить стресс-тест на 30+ минут игры с мониторингом FPS и памяти (Playwright performance API).
+6. **[TODO]** Заполнить `GAMEPLAY_TESTING_CHECKLIST.md` реальными результатами QA-прогона.
+7. **[TODO]** Проверить stale deps в `InstancedLevelObjects.tsx` (см. CODE_HEALTH_ANALYSIS.md).
+
+---
 
 ---
 
