@@ -22,6 +22,8 @@ jobs:
   quality:
     name: Quality checks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -50,6 +52,8 @@ jobs:
     name: Unit & Integration tests
     needs: quality
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -74,6 +78,8 @@ jobs:
     name: E2E tests
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -101,6 +107,8 @@ jobs:
     name: Production build
     needs: e2e
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -131,6 +139,7 @@ jobs:
     needs: build
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions: {}
     environment: preview
     steps:
       - name: Download dist artifact
@@ -152,6 +161,7 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions: {}
     environment: production   # Requires manual reviewer approval in GitHub Environments
     steps:
       - name: Download dist artifact
