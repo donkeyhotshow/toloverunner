@@ -4,7 +4,7 @@
 
 import { StateCreator } from 'zustand';
 import { GameState, GameplaySlice } from './storeTypes';
-import { GameMode, GameStatus, DNACard } from '../types';
+import { GameMode, GameStatus, DNACard, VirusTypes } from '../types';
 import { GAMEPLAY_CONFIG, RUN_SPEED_BASE } from '../constants';
 import { eventBus } from '../utils/eventBus';
 import { safeClamp, safeNumber } from '../utils/safeMath';
@@ -148,8 +148,9 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
         takeDamage: (obj?: { type?: string | number }) => {
             const { isImmortalityActive, isInvincible, lives, shieldActive } = get();
 
-            // SPERN RUNNER 2.2.0: Вирусы убивают сразу, игнорируя базовые щиты 
-            const ignoresShield = obj?.type === 'VIRUS_KILLER_LOW' || obj?.type === 'VIRUS_KILLER_HIGH' || obj?.type === 'VIRUS_KILLER' || obj?.type === 13;
+            // GDD: Віруси — мгновенна смерть, ігнорують щит (MEMBRANE_SHIELD не захищає від Вірусів)
+            const virusTypeValues: ReadonlyArray<string> = [...VirusTypes];
+            const ignoresShield = !!obj?.type && (virusTypeValues as ReadonlyArray<unknown>).includes(obj.type);
 
             // Если активен щит (Hoverboard), он защищает от 1 удара и лопается
             if (shieldActive && !ignoresShield) {
@@ -339,6 +340,7 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
                 shieldActive: true,
                 shieldTimer: 10
             });
+            eventBus.emit('player:collect', { type: 'shield' });
         },
 
         activateMagnet: () => {
@@ -346,6 +348,7 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
                 magnetActive: true,
                 magnetTimer: 10
             });
+            eventBus.emit('player:collect', { type: 'magnet' });
         },
 
         activateSpeedBoost: () => {

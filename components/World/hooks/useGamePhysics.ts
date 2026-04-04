@@ -7,7 +7,7 @@ import { useStore } from '../../../store';
 import { LANE_WIDTH, SAFETY_CONFIG } from '../../../constants';
 import { safeDeltaTime } from '../../../utils/safeMath';
 import { validateLane } from '../../../utils/laneUtils';
-import { GameObject, ObjectType } from '../../../types';
+import { GameObject, ObjectType, VirusTypes } from '../../../types';
 import { gameObjectPool } from '../SharedPool';
 // import { getPerformanceManager } from '../../../infrastructure/performance/PerformanceManager'; // Unused
 
@@ -286,7 +286,9 @@ export const useGamePhysics = () => {
                 obj.type === ObjectType.VIRUS_KILLER_LOW ||
                 obj.type === ObjectType.VIRUS_KILLER_HIGH ||
                 obj.type === ObjectType.IMMUNE_PATROL ||
-                obj.type === ObjectType.MEMBRANE_WALL;
+                obj.type === ObjectType.MEMBRANE_WALL ||
+                // GDD: всі типи Вірусів — смертельні перешкоди
+                (VirusTypes as ReadonlyArray<string>).includes(obj.type);
 
             if (isObstacleType) {
                 const {
