@@ -451,7 +451,7 @@ export const useGamePhysics = () => {
             playerPhysics.velocity.y = Math.max(playerPhysics.velocity.y, bounceForce);
             playerPhysics.isGrounded = false;
             playerPhysics.isJumping = true;
-            playerPhysics.jumpsRemaining = 2; // Restore jump after bounce
+            playerPhysics.jumpsRemaining = 2; // Restore both jumps after worm trampoline bounce (GDD ObstacleType.TRAMPOLINE)
             eventBus.emit('player:jump', undefined); // Triggers BOING! in ComicPopupSystem
             store.bacteriaJumpBonus(); // Score bonus for worm bounce
         }

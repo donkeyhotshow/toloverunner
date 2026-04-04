@@ -45,6 +45,8 @@ const CameraController: React.FC = () => {
   const { camera } = useThree();
   const dutchTilt = useRef(0);
   const targetDutchTilt = useRef(0);
+  const dutchResetTimerA = useRef(0); // countdown for combat Dutch tilt reset (replaces setTimeout 200ms)
+  const dutchResetTimerB = useRef(0); // countdown for combo Dutch tilt reset (replaces setTimeout 400ms)
   const impactLag = useRef(0);
   const playerPosRef = useRef(new Vector3());
   const currentPos = useRef(new Vector3());
@@ -70,15 +72,15 @@ const CameraController: React.FC = () => {
       useCameraShake.getState().shake(0.2, 0.2);
     };
     const handleCombatAction = () => {
-      // 📸 Dutch Angle on attack
+      // 📸 Dutch Angle on attack — reset is handled via dutchResetTimerA in game loop
       targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.15; // ~8.5 degrees
-      setTimeout(() => { targetDutchTilt.current = 0; }, 200);
+      dutchResetTimerA.current = 0.2; // 200 ms, decremented in game loop callback
     };
     const handleComboMilestone = () => {
-      // Stronger tilt on milestone
+      // Stronger tilt on milestone — reset is handled via dutchResetTimerB in game loop
       targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.25; // ~14 degrees
       useCameraShake.getState().shake(0.5, 0.3);
-      setTimeout(() => { targetDutchTilt.current = 0; }, 400);
+      dutchResetTimerB.current = 0.4; // 400 ms, decremented in game loop callback
     };
 
     window.addEventListener('player-hit', handleHit);
@@ -116,6 +118,22 @@ const CameraController: React.FC = () => {
 
       // Dutch Angle Smoothing
       dutchTilt.current = MathUtils.lerp(dutchTilt.current, targetDutchTilt.current, delta * 10);
+
+      // Decrement Dutch tilt reset timers (frame-rate-independent replacement for setTimeout)
+      if (dutchResetTimerA.current > 0) {
+        dutchResetTimerA.current -= delta;
+        if (dutchResetTimerA.current <= 0) {
+          dutchResetTimerA.current = 0;
+          targetDutchTilt.current = 0;
+        }
+      }
+      if (dutchResetTimerB.current > 0) {
+        dutchResetTimerB.current -= delta;
+        if (dutchResetTimerB.current <= 0) {
+          dutchResetTimerB.current = 0;
+          targetDutchTilt.current = 0;
+        }
+      }
 
       // Handle Impact Lag decay
       impactLag.current = Math.max(0, impactLag.current - delta * 3.0);
