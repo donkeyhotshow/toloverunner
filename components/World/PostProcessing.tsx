@@ -7,29 +7,42 @@
  * ✅ Виньєтка для органічного відчуття
  * ❌ НІЯКОГО Bloom (неонове світіння)
  * ❌ НІЯКОЇ хроматичної аберації (заважає чіткості)
+ *
+ * PERFORMANCE NOTE:
+ * hitIntensity/perfectIntensity are refs (not state) so they never trigger re-renders.
+ * The vignette effect is mutated directly in useFrame for zero-React-overhead animation.
+ * The biological pulse uses clock.elapsedTime live in useFrame — the previous useMemo
+ * approach was frozen because the clock object reference never changes between renders.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { EffectComposer, Vignette } from '@react-three/postprocessing';
-import { useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { useStore } from '../../store';
 import { getPerformanceManager, QualityLevel } from '../../infrastructure/performance/PerformanceManager';
+import type { VignetteEffect } from 'postprocessing';
 
 export const PostProcessing: React.FC = (): React.ReactElement | null => {
-    const [hitIntensity, setHitIntensity] = useState(0);
-    const [perfectIntensity, setPerfectIntensity] = useState(0);
+    // Refs instead of state: mutations here never cause React re-renders
+    const hitIntensityRef = useRef(0);
+    const perfectIntensityRef = useRef(0);
+    const vignetteRef = useRef<VignetteEffect>(null);
+    const speedRef = useRef(30);
+
+    // Keep speedRef current without subscribing to re-renders on every speed change
     const speed = useStore(s => s.speed || 30);
+    useEffect(() => { speedRef.current = speed; }, [speed]);
+
     const pm = getPerformanceManager();
     const currentQuality = pm.getCurrentQuality();
 
     const isLowEnd = currentQuality <= QualityLevel.LOW;
     const multisampling = isLowEnd ? 2 : 4;
 
-    const { clock } = useThree();
-
+    // Listen for hit/perfect events and set ref values — no React re-render needed
     useEffect(() => {
-        const handleHit = () => setHitIntensity(0.8);
-        const handlePerfect = () => setPerfectIntensity(0.6);
+        const handleHit = () => { hitIntensityRef.current = 0.8; };
+        const handlePerfect = () => { perfectIntensityRef.current = 0.6; };
         
         window.addEventListener('player-hit', handleHit);
         window.addEventListener('player-perfect', handlePerfect);
@@ -40,31 +53,33 @@ export const PostProcessing: React.FC = (): React.ReactElement | null => {
         };
     }, []);
 
-    useEffect(() => {
-        if (hitIntensity > 0 || perfectIntensity > 0) {
-            const timer = requestAnimationFrame(() => {
-                setHitIntensity(prev => Math.max(0, prev - 0.1));
-                setPerfectIntensity(prev => Math.max(0, prev - 0.08));
-            });
-            return () => cancelAnimationFrame(timer);
+    // 🎨 All vignette animation runs here — no React re-render, zero GC pressure
+    useFrame((state, delta) => {
+        // Decay intensities using frame delta (frame-rate independent, synced to R3F loop)
+        if (hitIntensityRef.current > 0) {
+            hitIntensityRef.current = Math.max(0, hitIntensityRef.current - delta * 6.0);
         }
-        return undefined;
-    }, [hitIntensity, perfectIntensity]);
+        if (perfectIntensityRef.current > 0) {
+            perfectIntensityRef.current = Math.max(0, perfectIntensityRef.current - delta * 4.8);
+        }
 
-    // 💓 BIOLOGICAL PULSE: Vignette breathes with speed
-    const pulseFactor = useMemo(() => {
-        const base = 0.4;
-        const pulse = Math.sin(clock.elapsedTime * (speed * 0.08)) * 0.05;
-        return base + pulse;
-    }, [clock, speed]);
+        const effect = vignetteRef.current;
+        if (!effect) return;
 
-    // 🎨 VIGNETTE INTENSITY - reacts to hits
-    const vignetteDarkness = useMemo(() => {
-        let base = 0.3; // Softer base for better visibility
-        base += hitIntensity * 0.5;
-        base -= perfectIntensity * 0.1;
-        return base;
-    }, [hitIntensity, perfectIntensity]);
+        // 💓 BIOLOGICAL PULSE: breathes with speed (previously frozen in useMemo)
+        const pulse = Math.sin(state.clock.elapsedTime * speedRef.current * 0.08) * 0.05;
+        const newOffset = 0.4 + pulse;
+
+        // 🎨 VIGNETTE INTENSITY: reacts to hits
+        const newDarkness = 0.3
+            + hitIntensityRef.current * 0.5
+            - perfectIntensityRef.current * 0.1;
+
+        // Directly mutate the postprocessing effect — bypasses React reconciler entirely
+        const vignetteEffect = effect as unknown as { offset: number; darkness: number };
+        vignetteEffect.offset = newOffset;
+        vignetteEffect.darkness = Math.max(0, newDarkness);
+    });
 
     return (
         <EffectComposer
@@ -72,11 +87,8 @@ export const PostProcessing: React.FC = (): React.ReactElement | null => {
             stencilBuffer={false}
             multisampling={multisampling}
         >
-            {/* 📜 VIGNETTE - subtle frame for immersion */}
-            <Vignette
-                offset={pulseFactor}
-                darkness={vignetteDarkness}
-            />
+            {/* 📜 VIGNETTE - subtle frame for immersion; animated via vignetteRef in useFrame */}
+            <Vignette ref={vignetteRef} offset={0.4} darkness={0.3} />
         </EffectComposer>
     );
 };

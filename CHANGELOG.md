@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-04-04 🕶 **Three.js / R3F Bug Fixes**
+
+### 🎉 **RELEASE HIGHLIGHTS**
+- **Visual Fix**: Vignette pulse un-frozen — `useMemo(clock...)` replaced with live `useFrame` reads
+- **Performance**: All `setState` calls removed from R3F render loops — zero reconciler overhead at 60 FPS
+- **Correctness**: Dutch-tilt reset is now frame-rate-independent (delta-based timers via `useRef`)
+- **Build**: Added missing `import * as THREE from 'three'` in `LODController.tsx`
+- **Docs**: Added `docs/THREE_JS_BUGS.md` with full before/after analysis for all 5 bugs
+
+### 🐛 **BUG FIXES**
+
+#### Three.js / R3F
+- **FIXED**: `useMemo(() => Math.sin(clock.elapsedTime...), [clock, speed])` — clock object reference never changes, pulse was frozen (`PostProcessing.tsx`)
+- **FIXED**: `requestAnimationFrame`-decay-loop called `setState` outside R3F sync context — double-render each frame (`PostProcessing.tsx`)
+- **FIXED**: `setBonusFlash(...)` inside `useFrame` during active flash — React re-render every 60 FPS (`EnhancedLighting.tsx`)
+- **FIXED**: Two `setTimeout` calls for Dutch-tilt reset — frame-rate-dependent timing (`CameraController.tsx`)
+- **FIXED**: `THREE.PerspectiveCamera` used without `import * as THREE from 'three'` — build/type error (`LODController.tsx`)
+
+### 🚀 **PERFORMANCE IMPROVEMENTS**
+- **PostProcessing**: `useState` → `useRef` for `hitIntensity` and `perfectIntensity`; direct Three.js object mutation in `useFrame`
+- **EnhancedLighting**: `bonusFlash` state → `bonusFlashRef`; `PointLight.intensity` mutated directly, always mounted at `intensity=0`
+- **CameraController**: `dutchResetTimerA/B` → `useRef<number>`, decremented via `delta` in game loop callback
+
+---
+
 ## [2.4.0] - 2026-02-27 🧹 **Spring Cleanup & Docs Update**
 
 ### 🎉 **RELEASE HIGHLIGHTS**

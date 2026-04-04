@@ -1,6 +1,6 @@
-# 🏗️ Архитектура ToLOVERunner v2.4.0
+# 🏗️ Архитектура ToLOVERunner v2.4.1
 
-**Версия:** 2.4.0  
+**Версия:** 2.4.1  
 **Лицензия:** Apache-2.0  
 **Технологический стек:** React 18, Three.js, TypeScript, Vite, Zustand, TailwindCSS  
 **См. также:** [ADR 0001 — стратегия стабилизации](./adr/0001-stabilization-strategy.md)

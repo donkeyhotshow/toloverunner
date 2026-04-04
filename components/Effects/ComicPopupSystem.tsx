@@ -93,7 +93,8 @@ export const ComicPopupSystem: React.FC = () => {
             eventBus.on('player:hit', () => spawn("BONK!", "#FF0000", 2.0)),
             eventBus.on('player:graze', () => spawn("ZOOM!", "#FFFFFF", 1.5)),
             eventBus.on('player:collect', (data: { type?: string } | undefined) => {
-                if (data?.type === 'magnet' || data?.type === 'shield') spawn("SHIELD UP!", "#FF00FF", 1.5);
+                if (data?.type === 'magnet') spawn("ЙОУ МАГНІТ!", "#FFD700", 1.5);
+                else if (data?.type === 'shield') spawn("SHIELD UP!", "#FF00FF", 1.5);
                 else if (Math.random() > 0.6) spawn("DING!", "#FFD700", 0.8);
             }),
             eventBus.on('player:membrane_pop', () => spawn("POP!", "#00BFFF", 2.5)),

@@ -9,30 +9,40 @@
  * ✅ Высокая ambient light для плоских, чистых цветов
  * ✅ Яркие directional lights для четких теней
  * ✅ Минимум градаций - контрастные переходы свет/тень
+ *
+ * PERFORMANCE NOTE:
+ * bonusFlash is now a ref (not state) so it never triggers React re-renders.
+ * The bonus PointLight is always mounted; its intensity is mutated directly in useFrame.
+ * This eliminates per-frame re-renders that occurred when setBonusFlash was called in
+ * useFrame while the flash was active.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useStore } from '../../store';
 import { useFrame } from '@react-three/fiber';
 import { Vector3, PointLight } from 'three';
 
 export const EnhancedLighting: React.FC = () => {
-    const [bonusFlash, setBonusFlash] = useState(0);
+    // Ref instead of state: mutations don't trigger re-renders
+    const bonusFlashRef = useRef(0);
     const playerPos = useRef(new Vector3());
     const lightTarget = useRef(new Vector3());
     const playerLightRef = useRef<PointLight | null>(null);
     const bonusLightRef = useRef<PointLight | null>(null);
     
     useEffect(() => {
-        const handleBonus = () => setBonusFlash(1.0);
+        const handleBonus = () => { bonusFlashRef.current = 1.0; };
         window.addEventListener('bonus-collected', handleBonus);
         return () => window.removeEventListener('bonus-collected', handleBonus);
     }, []);
 
     useFrame((_state, delta) => {
-        // Decay bonus flash
-        if (bonusFlash > 0) {
-            setBonusFlash(prev => Math.max(0, prev - delta * 4.0));
+        // Decay bonus flash and mutate PointLight intensity directly — no setState, no re-render
+        if (bonusFlashRef.current > 0) {
+            bonusFlashRef.current = Math.max(0, bonusFlashRef.current - delta * 4.0);
+        }
+        if (bonusLightRef.current) {
+            bonusLightRef.current.intensity = bonusFlashRef.current * 5.0;
         }
 
         // Smoothly follow player for the point light
@@ -90,16 +100,14 @@ export const EnhancedLighting: React.FC = () => {
                 decay={2}
             />
 
-            {/* ✨ BONUS FLASH - Triggers on collection */}
-            {bonusFlash > 0 && (
-                <pointLight
-                    ref={bonusLightRef}
-                    position={[0, 0, 0]}
-                    intensity={bonusFlash * 5.0}
-                    color="#FFD700" // Golden flash
-                    distance={20}
-                />
-            )}
+            {/* ✨ BONUS FLASH - Always mounted; intensity driven by bonusFlashRef in useFrame */}
+            <pointLight
+                ref={bonusLightRef}
+                position={[0, 0, 0]}
+                intensity={0} // starts at 0; mutated directly in useFrame
+                color="#FFD700" // Golden flash
+                distance={20}
+            />
 
             {/* 💎 RIM LIGHT - Подчеркивает контуры персонажа */}
             <directionalLight

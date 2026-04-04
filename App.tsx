@@ -13,7 +13,7 @@ import * as THREE from 'three';
 // Sentry is loaded dynamically to reduce initial bundle size
 
 // Game Systems Context (DI for managers)
-import { GameSystemsProvider, useGameSystems } from './infrastructure/context/GameSystemsContext';
+import { useGameSystems } from './infrastructure/context/GameSystemsContext';
 
 // Debug globals registry
 import {
@@ -36,8 +36,7 @@ import { EnhancedHUD } from './components/UI/EnhancedHUD';
 import { FPSCounter } from './components/UI/FPSCounter';
 import { EnhancedLoadingScreen } from './components/UI/EnhancedLoadingScreen';
 import { useStore } from './store';
-import { UIErrorBoundary } from './components/System/UIErrorBoundary';
-import { StableErrorBoundary } from './components/System/StableErrorBoundary';
+import { AppProviders } from './components/System/AppProviders';
 import { TexturePreloader } from './components/System/TexturePreloader';
 import { PauseSystemController } from './components/System/PauseSystem';
 import { BrowserStabilityController } from './components/System/BrowserStability';
@@ -169,9 +168,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <StableErrorBoundary>
-      <UIErrorBoundary>
-        <div className="relative w-full h-screen bg-[#000033] overflow-hidden select-none">
+    <div className="relative w-full h-screen bg-[#000033] overflow-hidden select-none">
 
           {/* 📰 PAPER TEXTURE OVERLAY - Comic print effect */}
           <div className="paper-texture-overlay" />
@@ -317,19 +314,17 @@ const AppContent: React.FC = () => {
             </div>
           )}
         </div>
-      </UIErrorBoundary>
-    </StableErrorBoundary>
   );
 };
 
 /**
- * Main App component wrapped with GameSystemsProvider
+ * Main App component — providers wrapped in AppProviders (GameSystems + error boundaries).
  */
 function App() {
   return (
-    <GameSystemsProvider>
+    <AppProviders>
       <AppContent />
-    </GameSystemsProvider>
+    </AppProviders>
   );
 }
 

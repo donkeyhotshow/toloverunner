@@ -1,4 +1,4 @@
-# 🚀 ToLOVERunner v2.4.0 - Spring Cleanup Release
+# 🚀 ToLOVERunner v2.4.1 - Three.js/R3F Performance Fixes
 
 <div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
@@ -7,6 +7,13 @@
 ## 🎮 AAA-Level 3D Endless Runner Game
 
 **ToLOVERunner** — enterprise-grade 3D endless runner, где игрок управляет сперматозоидом в высокотехнологичной гонке. Современная архитектура, оптимизированная производительность и премиум пользовательский опыт.
+
+### 🌟 **Release Highlights v2.4.1**
+- ✅ **Three.js/R3F Bug Fixes** — 5 багов устранено (visual, perf, correctness, build)
+- ✅ **Vignette Pulse Live** — пульс виньетки теперь анимируется через `useFrame`
+- ✅ **Zero Re-renders** — убраны все `setState` из `useFrame`-циклов
+- ✅ **Frame-independent Dutch-tilt** — `setTimeout` заменён на `useRef`+`delta`
+- ✅ **Build Fixed** — добавлен `import * as THREE` в `LODController.tsx`
 
 ### 🌟 **Release Highlights v2.4.0**
 - ✅ **Spring Cleanup** - Удален лишний мусор и логи
@@ -162,8 +169,8 @@ npm run preview
 ## 📊 **Статус проекта**
 
 ### ✅ **Production Ready**
-- **Version:** v2.4.0 (Spring Cleanup Release)
-- **Release Date:** February 27, 2026
+- **Version:** v2.4.1 (Three.js/R3F Fixes)
+- **Release Date:** April 4, 2026
 - **Stability:** 100% (Zero critical bugs)
 - **Performance:** AAA level (60 FPS stable)
 - **Testing:** 100% QA coverage
@@ -181,6 +188,7 @@ npm run preview
 ## 📚 **Документация**
 
 ### **Основная документация:**
+- **[docs/THREE_JS_BUGS.md](./docs/THREE_JS_BUGS.md)** - Отчёт по Three.js/R3F-багам и исправлениям
 - **[CHANGELOG.md](./CHANGELOG.md)** - История версий и изменений
 - **[docs/RUNBOOK_DEPLOY.md](./docs/RUNBOOK_DEPLOY.md)** - Развёртывание (Docker, Vercel, переменные окружения)
 - **[docs/reports/FINAL_REPORT.md](./docs/reports/FINAL_REPORT.md)** - Финальный отчет о проекте
@@ -336,8 +344,8 @@ npm run test:e2e          # E2E тесты (Playwright)
 
 ## 📊 Статус проекта
 
-**Версия:** 2.4.0  
-**Статус:** 🟢 Готово к использованию (Cleaned & Optimized)
+**Версия:** 2.4.1  
+**Статус:** 🟢 Готово к использованию (Three.js/R3F Fixed)
 
 ---
 
@@ -347,4 +355,4 @@ Apache-2.0
 
 ---
 
-**View your app in AI Studio:** https://ai.studio/apps/drive/15ZHNI5b-5g3Gctokv1S_vmYgyczzrD4q
+

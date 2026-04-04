@@ -1,4 +1,4 @@
-# 📋 TECH DESIGN DOCUMENT — ToLoveRunner v2.4.0
+# 📋 TECH DESIGN DOCUMENT — ToLoveRunner v2.4.1
 
 > **Тип:** Техническая документация по геймплею, дизайну и UX  
 > **Статус:** Актуально (апрель 2026)  

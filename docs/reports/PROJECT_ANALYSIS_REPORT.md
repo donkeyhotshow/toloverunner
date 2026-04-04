@@ -549,7 +549,7 @@ Total: 38 пакетов
 Для вопросов и предложений:
 - **GitHub Issues:** [repository-url]/issues
 - **Documentation:** [./docs/](./docs/)
-- **AI Studio:** https://ai.studio/apps/drive/15ZHNI5b-5g3Gctokv1S_vmYgyczzrD4q
+
 
 ---
 
