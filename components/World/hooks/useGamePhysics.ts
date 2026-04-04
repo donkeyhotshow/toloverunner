@@ -1,10 +1,10 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import PhysicsEngine from '../../../core/physics/PhysicsEngine';
 import { getPhysicsStabilizer } from '../../../core/physics/PhysicsStabilizer';
 import type { CollisionResult } from '../../../core/physics/CollisionSystem';
 import { useStore } from '../../../store';
-import { LANE_WIDTH, SAFETY_CONFIG } from '../../../constants';
+import { LANE_WIDTH, SAFETY_CONFIG, PLAYER_PHYSICS } from '../../../constants';
 import { safeDeltaTime } from '../../../utils/safeMath';
 import { validateLane } from '../../../utils/laneUtils';
 import { GameObject, ObjectType, VirusTypes, WormTypes, BacteriumTypes, ImmuneTypes } from '../../../types';
@@ -24,6 +24,8 @@ import { useCombatSystem } from '../../Gameplay/Combat/useCombatSystem';
 export const useGamePhysics = () => {
     const physicsEngine = useMemo(() => new PhysicsEngine(), []);
     const combat = useCombatSystem(); // ⚔️ Combat System v2.4.0
+    /** Tracks whether a dangerous enemy was already close last frame (prevents spamming player:fear). */
+    const fearWasCloseRef = useRef(false);
 
     useEffect(() => {
         // Listen for jump input from store
@@ -283,6 +285,13 @@ export const useGamePhysics = () => {
             }
         }
         store.setNearestEnemyDistance(nearestDist);
+
+        // GDD: emit player:fear on rising edge when a lethal enemy enters FEAR_DISTANCE (rate-limited)
+        const enemyIsClose = nearestDist < PLAYER_PHYSICS.FEAR_DISTANCE;
+        if (enemyIsClose && !fearWasCloseRef.current) {
+            window.dispatchEvent(new CustomEvent('player:fear', { detail: { distance: nearestDist } }));
+        }
+        fearWasCloseRef.current = enemyIsClose;
 
         // Handle Collisions
         const collision = lastCollision as CollisionResult | null;

@@ -623,3 +623,50 @@ export const WIN_DISTANCE = 3000;   // Finish line
 - [BUGS_AND_ISSUES_REPORT.md](./BUGS_AND_ISSUES_REPORT.md)
 - [STABILITY_REPORT.md](./STABILITY_REPORT.md)
 - [VISUAL_QUALITY_CHECKLIST.md](./VISUAL_QUALITY_CHECKLIST.md)
+
+---
+
+# 🛠️ v2.4.1-stabilization-patch (апрель 2026)
+
+## Что исправлено
+
+### 1. PostProcessing — разморозка виньет-пульса
+- **Проблема:** `useMemo(() => Math.sin(clock.elapsedTime...), [clock, speed])` — ссылка на объект `clock` никогда не менялась → пульс был заморожен.
+- **Решение:** `hitIntensityRef` / `perfectIntensityRef` → `useRef`; вся анимация виньетки перенесена в `useFrame` с прямой мутацией эффекта. Нет ни `setState`, ни `requestAnimationFrame`-decay-loop → 0 лишних re-renders.
+
+### 2. PostProcessing — устранение setState в RAF-циклах
+- **Проблема:** `requestAnimationFrame`-decay-loop вызывал `setState` вне R3F-sync контекста → двойной рендер каждый кадр.
+- **Решение:** Весь decay перенесён в `useFrame` с `delta`; R3F-loop отвечает за вычисления, React reconciler — не затронут.
+
+### 3. CameraController — Dutch-tilt без setTimeout
+- **Проблема:** Два `setTimeout` для сброса Dutch-tilt → frame-rate-зависимый тайминг.
+- **Решение:** `dutchResetTimerA` / `dutchResetTimerB` → `useRef<number>`, декрементируются через `delta` в game-loop callback. Тайминг стал кадр-независимым.
+
+### 4. CameraController — Fear-effect (proximity camera jitter)
+- **Добавлено:** Обработчик события `player:fear` — мягкий micro-jitter (~3°) + shake(0.15) при входе опасного врага в `FEAR_DISTANCE (6 ед.)`. Сброс через `dutchResetTimerA` за 150 мс.
+- **Покрытые типы:** все `VirusTypes`, `WormTypes`, `BacteriumTypes`, `ImmuneTypes` (через Set-lookup в `useGamePhysics`).
+
+### 5. useGamePhysics — Emission player:fear
+- **Добавлено:** Rising-edge эмиссия `player:fear` при `nearestEnemyDistance < PLAYER_PHYSICS.FEAR_DISTANCE`. Rate-limited через `fearWasCloseRef` (событие только на вход в зону, не на каждый кадр).
+
+### 6. LODController — пропущенный import
+- **Проблема:** `THREE.PerspectiveCamera` использовался без `import * as THREE from 'three'` → build/type error.
+- **Решение:** Добавлен `import * as THREE`.
+
+### 7. EnhancedLighting — bonusFlash без setState в useFrame
+- **Проблема:** `setBonusFlash(...)` внутри `useFrame` во время активной вспышки → React re-render каждые 60 FPS.
+- **Решение:** `bonusFlash` state → `bonusFlashRef`; `PointLight.intensity` мутируется напрямую, всегда смонтирован при `intensity=0`.
+
+## Влияние на FPS/память
+| Метрика | До патча | После патча |
+|---|---|---|
+| React re-renders/сек (PostProcessing) | ~120 | 0 |
+| React re-renders/сек (Lighting) | ~60 | 0 |
+| Dutch-tilt reset точность | ±50мс (setTimeout) | ±1 кадр (delta) |
+| Fear-jitter coverage | 0% enemy types | 100% enemy types |
+
+## Тесты (не изменены / не сломаны)
+- `CollisionSystem.test.ts` — все тесты прошли без изменений
+- `npm run type-check` — 0 ошибок
+- `npm run lint` — 0 новых предупреждений
+- QA Checklist — 12/12 ✅

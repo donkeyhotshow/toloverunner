@@ -71,6 +71,12 @@ const CameraController: React.FC = () => {
     const handleGraze = () => {
       useCameraShake.getState().shake(0.2, 0.2);
     };
+    const handleFear = () => {
+      // Subtle micro-jitter when a dangerous enemy enters FEAR_DISTANCE
+      useCameraShake.getState().shake(0.15, 0.15);
+      targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.05; // ~3 degrees, barely perceptible
+      dutchResetTimerA.current = 0.15; // 150 ms to reset (shorter than combat tilt)
+    };
     const handleCombatAction = () => {
       // 📸 Dutch Angle on attack — reset is handled via dutchResetTimerA in game loop
       targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.15; // ~8.5 degrees
@@ -85,6 +91,7 @@ const CameraController: React.FC = () => {
 
     window.addEventListener('player-hit', handleHit);
     window.addEventListener('player-graze', handleGraze);
+    window.addEventListener('player:fear', handleFear);
     window.addEventListener('combat:attack_up', handleCombatAction);
     window.addEventListener('combat:attack_down', handleCombatAction);
     window.addEventListener('combat:combo_milestone', handleComboMilestone);
@@ -92,6 +99,7 @@ const CameraController: React.FC = () => {
     return () => {
       window.removeEventListener('player-hit', handleHit);
       window.removeEventListener('player-graze', handleGraze);
+      window.removeEventListener('player:fear', handleFear);
       window.removeEventListener('combat:attack_up', handleCombatAction);
       window.removeEventListener('combat:attack_down', handleCombatAction);
       window.removeEventListener('combat:combo_milestone', handleComboMilestone);
