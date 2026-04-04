@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: ToLoveRunner Multiplayer API
+  description: API для синхронизации состояния игры, призраков игроков и телеметрии TDI.
+  version: 1.0.0
+
+components:
+  schemas:
+    MessageType:
+      type: string
+      enum: [handshake, input, snapshot, tdi_telemetry, event]
+
+    Handshake:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [handshake]
+        clientId:
+          type: string
+          format: uuid
+        version:
+          type: string
+          example: "v2.5.0"
+        authToken:
+          type: string
+
+    InputPacket:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [input]
+        tick:
+          type: integer
+        clientId:
+          type: string
+        lane:
+          type: integer
+          minimum: 0
+          maximum: 4
+        action:
+          type: string
+          enum: [none, left, right, jump, slide, dash]
+        timestamp:
+          type: integer
+          format: uint64
+
+    PlayerState:
+      type: object
+      properties:
+        id:
+          type: string
+        x:
+          type: number
+        y:
+          type: number
+        z:
+          type: number
+        vel:
+          type: number
+
+    ObstacleState:
+      type: object
+      properties:
+        id:
+          type: string
+        lane:
+          type: integer
+        type:
+          type: string
+        state:
+          type: string
+
+    Snapshot:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [snapshot]
+        tick:
+          type: integer
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerState"
+        obstacles:
+          type: array
+          items:
+            $ref: "#/components/schemas/ObstacleState"
+        globalTdi:
+          type: number
+
+    TDITelemetry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [tdi_telemetry]
+        clientId:
+          type: string
+        tick:
+          type: integer
+        tdi:
+          type: number
+        visibleObstacles:
+          type: integer
+        localFps:
+          type: integer
+        timestamp:
+          type: integer
+          format: uint64
+
+    GameEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [event]
+        eventId:
+          type: string
+        tick:
+          type: integer
+        eventType:
+          type: string
+        payload:
+          type: object

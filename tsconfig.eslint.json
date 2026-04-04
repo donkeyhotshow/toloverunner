@@ -1,0 +1,27 @@
+{
+    "extends": "./tsconfig.json",
+    "include": [
+        "core/**/*",
+        "components/**/*",
+        "infrastructure/**/*",
+        "hooks/**/*",
+        "store/**/*",
+        "utils/**/*",
+        "types/**/*",
+        "domain/**/*",
+        "constants/**/*",
+        "tests/**/*",
+        "scripts/**/*",
+        "public/**/*",
+        "*.js",
+        "*.ts",
+        "*.cjs",
+        "*.mjs",
+        "*.tsx"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "server/**/*"
+    ]
+}

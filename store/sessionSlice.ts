@@ -1,0 +1,216 @@
+/**
+ * @license SPDX-License-Identifier: Apache-2.0
+ */
+
+import { StateCreator } from 'zustand';
+import { GameState, SessionSlice } from './storeTypes';
+import { GameStatus, GameMode, BiomeType } from '../types';
+import { ProceduralSystem } from '../components/System/Procedural';
+import { RUN_SPEED_BASE, GAMEPLAY_CONFIG, INITIAL_LIVES } from '../constants';
+import { unifiedAudio } from '../core/audio/UnifiedAudioManager';
+import { debugLog } from '../utils/debug';
+import { safeClamp, safeNumber } from '../utils/safeMath';
+
+export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> = (set, get) => {
+    const initialSeed = Math.random().toString(36).substring(2, 15);
+    const procGen = new ProceduralSystem(initialSeed);
+
+    return {
+        score: 0,
+        lives: INITIAL_LIVES,
+        maxLives: INITIAL_LIVES,
+        speed: RUN_SPEED_BASE,
+        distance: 0,
+        status: GameStatus.MENU,
+
+        seed: initialSeed,
+        procGen,
+        biome: BiomeType.FALLOPIAN_TUBE,
+        laneCount: 5,
+
+        sessionStartTime: 0,
+        timePlayed: 0,
+        lastTimestamp: 0,
+        nearestEnemyDistance: 999,
+        difficultyMultiplier: 1,
+
+        // 🆕 TDI
+        tdi: 0,
+        visibleObstacles: 0,
+
+        initGame: () => {
+            get().loadData();
+        },
+
+        startGame: (mode = GameMode.ENDLESS) => {
+            debugLog("Starting countdown sequence...");
+            unifiedAudio.init();
+            set({
+                status: GameStatus.COUNTDOWN,
+                gameMode: mode,
+                lives: get().maxLives,
+                score: 0,
+                distance: 0
+            });
+        },
+
+        setGameMode: (mode: GameMode) => set({ gameMode: mode }),
+
+        startGameplay: () => {
+            debugLog("⭐ startGameplay() CALLED");
+            get().clearPendingGameplayTimeouts?.();
+            const { maxLives, characterType } = get();
+            const newSeed = Math.random().toString(36).substring(2, 15);
+
+            get().procGen.init(newSeed);
+
+            set({
+                status: GameStatus.PLAYING,
+                score: 0,
+                lives: maxLives,
+                speed: RUN_SPEED_BASE,
+                distance: 0,
+                sessionStartTime: Date.now(),
+                timePlayed: 0,
+                lastTimestamp: performance.now(),
+                seed: newSeed,
+                localPlayerState: { ...get().localPlayerState, characterType },
+                // Reset gameplay flags
+                isImmortalityActive: false,
+                isSpeedBoostActive: false,
+                shieldActive: false,
+                shieldTimer: 0,
+                magnetActive: false,
+                magnetTimer: 0,
+                speedBoostActive: false,
+                speedBoostTimer: 0,
+                lastCollectTime: 0,
+                perfectTimingBonus: 0,
+                combo: 0,
+                multiplier: 1,
+                dashCooldown: 0,
+                isDashing: false,
+                isInvincible: false,
+                nearestEnemyDistance: 999,
+                // Reset TDI
+                tdi: 0,
+                visibleObstacles: 0
+            });
+        },
+
+        resetGame: () => {
+            get().clearPendingGameplayTimeouts?.();
+            set({
+                score: 0,
+                lives: get().maxLives,
+                distance: 0,
+                status: GameStatus.MENU
+            });
+        },
+
+        restartGame: () => {
+            get().startGame(get().gameMode);
+        },
+
+        revive: () => {
+            const { gems, status } = get();
+            if (status === GameStatus.GAME_OVER && gems >= 1) {
+                set({
+                    status: GameStatus.PLAYING,
+                    lives: 1,
+                    gems: gems - 1,
+                    isInvincible: true
+                });
+                const id = setTimeout(() => set({ isInvincible: false }), 2000);
+                get().registerGameplayTimeout?.(id);
+                return true;
+            }
+            return false;
+        },
+
+        increaseDistance: (delta) => {
+            const safeDelta = safeNumber(delta, 0);
+            if (safeDelta <= 0) return;
+            set((state) => {
+                const now = performance.now();
+                const lastTimestamp = state.lastTimestamp || now;
+                const dt = (now - lastTimestamp) / 1000;
+                const timePlayed = state.timePlayed + dt;
+
+                // SPERN RUNNER 2.2.0: Швидкість(t) = 10 м/с × (1 + 0.01 × t)
+                // t = 0 -> 10, t = 60 -> 16, t = 120 -> 22
+                const targetSpeed = RUN_SPEED_BASE * (1 + 0.01 * timePlayed);
+
+                // Smoothly interpolate current speed to target
+                const newSpeed = state.speed + (targetSpeed - state.speed) * 0.05;
+                const clampedSpeed = safeClamp(newSpeed, GAMEPLAY_CONFIG.MIN_SPEED, GAMEPLAY_CONFIG.MAX_SPEED, state.speed);
+
+                // SPERN RUNNER 2.2.0: x2 multiplier after ~90 seconds
+                const timeMultiplier = timePlayed >= 90 ? 2 : 1;
+                // Add points: base points from distance + any active multipliers
+                const earnedPoints = safeDelta * timeMultiplier;
+
+                const progress = Math.min(1.0, (state.distance + safeDelta) / 5000);
+                const expProgress = Math.pow(progress, 1.5);
+                const obstacleCurve = Math.pow(progress, 2.0);
+                const spawnRate = 1 + expProgress * 2.0;
+                const obstacleDensity = 0.25 + (obstacleCurve * 0.55);
+                const difficultyMultiplier = (spawnRate + obstacleDensity) / 2;
+                return {
+                    distance: safeClamp(state.distance + safeDelta, 0, Number.MAX_SAFE_INTEGER, state.distance),
+                    score: safeClamp(state.score + Math.floor(earnedPoints), 0, GAMEPLAY_CONFIG.MAX_SCORE, state.score),
+                    speed: clampedSpeed,
+                    timePlayed,
+                    lastTimestamp: now,
+                    difficultyMultiplier
+                };
+            });
+        },
+
+        setDistance: (dist) => set((s) => ({ distance: safeClamp(safeNumber(dist, 0), 0, Number.MAX_SAFE_INTEGER, s.distance) })),
+
+        updateGameTimer: (dt) => {
+            set(s => ({
+                momentum: safeClamp(s.momentum - dt * 0.05, 1.0, Number.MAX_SAFE_INTEGER, 1.0)
+            }));
+        },
+
+        addScore: (amount) => set(s => ({
+            score: safeClamp(s.score + safeNumber(amount, 0), 0, GAMEPLAY_CONFIG.MAX_SCORE, s.score)
+        })),
+
+        useLife: () => set(s => ({ lives: safeClamp(s.lives - 1, 0, s.maxLives, 0) })),
+
+        setNearestEnemyDistance: (distance: number) => set({ nearestEnemyDistance: distance }),
+
+        // 🆕 TDI Logic
+        setVisibleObstacles: (n: number) => set({ visibleObstacles: n }),
+        computeTDI: (fps: number) => set(state => {
+            // Load factor depends on visible obstacles
+            const loadFactor = Math.min(1, state.visibleObstacles / 20);
+            
+            // If FPS is dropping below target (e.g. 55), we artificially increase TDI 
+            // to signal generators to back off.
+            const perfFactor = fps < 55 ? 1.2 : 1.0;
+            
+            // Speed factor: faster speed = higher perceived density
+            const speedFactor = Math.min(1.5, state.speed / RUN_SPEED_BASE);
+            
+            const newTdi = Math.min(1, loadFactor * perfFactor * speedFactor);
+            return { tdi: newTdi };
+        }),
+
+        getDifficulty: () => {
+            const state = get();
+            const progress = Math.min(1.0, state.distance / 5000);
+            const exponentialProgress = Math.pow(progress, 1.5);
+            const obstacleDensityCurve = Math.pow(progress, 2.0);
+            return {
+                spawnRate: 1 + exponentialProgress * 2.0,
+                virusSpeed: 1 + exponentialProgress * 0.5,
+                coinRarity: Math.max(0.6, 1 - progress * 0.3),
+                obstacleDensity: 0.25 + (obstacleDensityCurve * 0.55)
+            };
+        }
+    };
+};

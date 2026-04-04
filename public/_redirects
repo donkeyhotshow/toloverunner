@@ -1,0 +1,6 @@
+# Netlify redirects
+# SPA fallback to index.html for client-side routing
+/*    /index.html   200
+
+# Redirect old URLs if needed
+# /old-page    /new-page    301

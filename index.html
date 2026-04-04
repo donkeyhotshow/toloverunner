@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>ToLOVERunner V2</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://browser.sentry-cdn.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data: https: blob:;
+      font-src 'self' https://fonts.gstatic.com data:;
+      worker-src blob: data:;
+      connect-src 'self' https://*.sentry.io https://0.peerjs.com wss://0.peerjs.com ws://localhost:* http://localhost:* https://cdn.jsdelivr.net;
+      media-src 'self' data: blob:;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+
+      upgrade-insecure-requests;
+    " />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#1a0b2e" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ToLOVERunner" />
+  <meta name="description"
+    content="ToLoveRunner - AAA 3D Endless Runner Game built with React, Three.js and WebGL. Run, jump, and dodge obstacles in this high-speed adventure!" />
+  <meta name="keywords" content="3d game, endless runner, webgl, three.js, react game, browser game" />
+  <meta name="author" content="ToLoveRunner Team" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://toloverunner.vercel.app/" />
+  <meta property="og:title" content="ToLoveRunner v2.4.0 - 3D Endless Runner" />
+  <meta property="og:description"
+    content="Enterprise-grade 3D endless runner game. Experience high-speed action in your browser!" />
+  <meta property="og:image" content="/preview.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://toloverunner.vercel.app/" />
+  <meta property="twitter:title" content="ToLoveRunner v2.4.0" />
+  <meta property="twitter:description"
+    content="Enterprise-grade 3D endless runner game. Experience high-speed action in your browser!" />
+  <meta property="twitter:image" content="/preview.jpg" />
+
+  <!-- manifest подставляется vite-plugin-pwa -->
+
+  <!-- DNS Prefetch for external resources -->
+  <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet" />
+
+  <!-- NOTE: Tailwind and all deps are bundled by Vite; CDN/importmap removed to avoid duplicate React/runtime -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body,
+    #root {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+        Cantarell, sans-serif;
+      background: #1a0b2e;
+    }
+
+    canvas {
+      display: block;
+      touch-action: none;
+    }
+
+    .loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 24px;
+      z-index: 9999;
+    }
+  </style>
+  <!-- CSS подключается через index.tsx (Vite bundle) -->
+</head>
+
+<body>
+  <div id="root">
+    <div class="loading">Loading ToLOVERunner...</div>
+  </div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>

@@ -1,0 +1,102 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+node_modules_old
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Secrets & Credentials
+firebase-service-account.json
+serviceAccountKey.json
+*.pem
+*.key
+.env
+.env.local
+.env.production
+!.env.example
+
+# SSL Certificates (generated)
+certs/
+*.crt
+*.cert
+
+# Test artifacts
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
+# Binary images — exclude generated/test screenshots, keep source assets
+*.png
+!public/**/*.png
+!assets/**/*.png
+!docs/**/*.png
+
+# Screenshots (generated/test state — не коммитим)
+test-screenshots/
+screenshots/
+test-screenshots/
+firebase-debug.log
+
+# Temporary files
+tmp/
+*.tmp
+*.log
+*.pfx
+*.certificate
+tsconfig.tsbuildinfo
+stress_test_log.txt
+
+# IDE / Agent artifacts
+.agent/
+.kiro/
+
+# Build artifacts
+dist/
+dist-ssr/
+vite.config.ts.timestamp-*.mjs
+stats.html
+bundle-analyzer-report.html
+.vite
+.next
+
+# Lint outputs
+lint-output.txt
+lint.log
+
+# Reports (generated)
+**/issues-report.json
+**/eslint-report.json
+**/ts-errors-*.log
+
+# Sentry
+.sentryclirc
+
+# Vercel
+.vercel
+
+# Production monitoring
+sentry-debug-meta.properties
+
+# Docker (local)
+docker-compose.override.yml
+

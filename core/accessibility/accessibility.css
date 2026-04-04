@@ -1,0 +1,312 @@
+/**
+ * @license SPDX-License-Identifier: Apache-2.0
+ *
+ * Accessibility CSS - Стили дпности
+ */
+
+/* Screen Reader Only */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Skip Link */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #000;
+    color: #fff;
+    padding: 8px 16px;
+    z-index: 10000;
+    transition: top 0.3s ease;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* High Contrast Mode */
+.high-contrast {
+    --bg-primary: #000000;
+    --bg-secondary: #1a1a1a;
+    --text-primary: #ffffff;
+    --text-secondary: #ffff00;
+    --accent-primary: #00ffff;
+    --accent-secondary: #ff00ff;
+    --border-color: #ffffff;
+}
+
+.high-contrast * {
+    border-color: var(--border-color) !important;
+}
+
+.high-contrast button,
+.high-contrast [role="button"] {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 2px solid var(--border-color) !important;
+}
+
+.high-contrast button:hover,
+.high-contrast [role="button"]:hover {
+    background-color: var(--accent-primary) !important;
+    color: var(--bg-primary) !important;
+}
+
+.high-contrast button:focus,
+.high-contrast [role="button"]:focus {
+    outline: 3px solid var(--accent-secondary) !important;
+    outline-offset: 2px;
+}
+
+/* Large Text Mode */
+.large-text {
+    --font-scale: 1.25;
+}
+
+.large-text body {
+    font-size: calc(16px * var(--font-scale));
+}
+
+.large-text h1 { font-size: calc(2rem * var(--font-scale)); }
+.large-text h2 { font-size: calc(1.5rem * var(--font-scale)); }
+.large-text h3 { font-size: calc(1.25rem * var(--font-scale)); }
+.large-text p, .large-text span, .large-text div {
+    font-size: calc(1rem * var(--font-scale));
+}
+
+.large-text button,
+.large-text [role="button"] {
+    font-size: calc(1rem * var(--font-scale));
+    padding: calc(0.5rem * var(--font-scale)) calc(1rem * var(--font-scale));
+}
+
+/* Reduced Motion Mode */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+/* Focus Indicators */
+:focus-visible {
+    outline: 3px solid #4a90d9;
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+    outline: 3px solid #4a90d9;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(74, 144, 217, 0.3);
+}
+
+/* Touch Target Size (minimum 44x44px for accessibility) */
+button,
+[role="button"],
+a,
+input,
+select,
+textarea {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* Game Controls Accessibility */
+.game-control-button {
+    position: relative;
+}
+
+.game-control-button::after {
+    content: attr(aria-label);
+    position: absolute;
+    bottom: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.game-control-button:focus::after,
+.game-control-button:hover::after {
+    opacity: 1;
+}
+
+/* Colorblind-friendly colors */
+.colorblind-safe {
+    /* Use patterns/shapes in addition to colors */
+    --success-color: #0072B2; /* Blue instead of green */
+    --warning-color: #E69F00; /* Orange */
+    --error-color: #D55E00;   /* Vermillion instead of red */
+    --info-color: #56B4E9;    /* Sky blue */
+}
+
+/* Pattern overlays for colorblind users */
+.colorblind-pattern-success {
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(255, 255, 255, 0.1) 5px,
+        rgba(255, 255, 255, 0.1) 10px
+    );
+}
+
+.colorblind-pattern-warning {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 5px,
+        rgba(255, 255, 255, 0.1) 5px,
+        rgba(255, 255, 255, 0.1) 10px
+    );
+}
+
+.colorblind-pattern-error {
+    background-image: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 5px,
+        rgba(255, 255, 255, 0.1) 5px,
+        rgba(255, 255, 255, 0.1) 10px
+    );
+}
+
+/* RTL Support */
+[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+}
+
+[dir="rtl"] .flex-row {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .ml-auto {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+[dir="rtl"] .mr-auto {
+    margin-right: 0;
+    margin-left: auto;
+}
+
+/* Keyboard Navigation Indicators */
+.keyboard-nav-active *:focus {
+    outline: 3px solid #ff6b00 !important;
+    outline-offset: 3px;
+}
+
+/* Loading States for Screen Readers */
+[aria-busy="true"]::after {
+    content: " (Loading...)";
+}
+
+/* Error States */
+[aria-invalid="true"] {
+    border-color: #d32f2f !important;
+    box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.2);
+}
+
+/* Disabled States */
+[aria-disabled="true"],
+[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Live Region Styling (hidden but accessible) */
+[role="status"],
+[role="alert"],
+[aria-live] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Visible alerts */
+[role="alert"].visible {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    height: auto;
+    padding: 16px 24px;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    background: #d32f2f;
+    color: white;
+    border-radius: 8px;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Game HUD Accessibility */
+.hud-element {
+    /* Ensure HUD elements are readable */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    font-weight: bold;
+}
+
+.hud-element.high-contrast {
+    background: rgba(0, 0, 0, 0.9);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid white;
+}
+
+/* Mobile Touch Targets */
+@media (pointer: coarse) {
+    button,
+    [role="button"],
+    a {
+        min-height: 48px;
+        min-width: 48px;
+        padding: 12px;
+    }
+
+    /* Increase spacing between interactive elements */
+    .touch-spacing > * + * {
+        margin-top: 8px;
+    }
+}
+
+/* Print Styles for Accessibility */
+@media print {
+    .no-print,
+    [aria-hidden="true"] {
+        display: none !important;
+    }
+
+    a[href]::after {
+        content: " (" attr(href) ")";
+    }
+}
