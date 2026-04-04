@@ -73,6 +73,7 @@ export function createSpeedActions(set: Set, get: Get, registerGameplayTimeout: 
             let bonus = 0;
             let perfectTiming = false;
             if (timeSinceLastCollect < 500 && timeSinceLastCollect > 0 && state.lastCollectTime > 0) {
+                // Perfect-timing bonus: 50pts (halved from original 100 — base coin value is 5, not 10)
                 bonus = 50;
                 perfectTiming = true;
             }

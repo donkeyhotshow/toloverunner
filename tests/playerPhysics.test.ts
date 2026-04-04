@@ -57,8 +57,8 @@ describe('PlayerPhysics', () => {
     expect(physics.jumpsRemaining).toBe(0);
     // Double-jump force should be applied (velocity changes again)
     expect(physics.isDoubleJumping || physics.isJumping).toBe(true);
-    // After double-jump, upward velocity should be present
-    void velocityAfterFirst; // acknowledged
+    // Double-jump applies a new upward velocity impulse — should differ from first jump velocity
+    expect(physics.velocity.y).not.toBe(velocityAfterFirst);
   });
 
   // ── Gravity ────────────────────────────────────────────────────────────────
