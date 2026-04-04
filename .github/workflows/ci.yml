@@ -1,0 +1,165 @@
+name: CI / CD
+
+# Triggers: every PR to main or develop, and every push to main
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+# Cancel in-progress runs when a new commit is pushed to the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 1: Quality checks (type-check, lint, security audit)
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  quality:
+    name: Quality checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npm run type-check
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Security audit (high+critical only)
+        run: npm run security:audit
+        continue-on-error: false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 2: Unit & Integration tests (vitest)
+# ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Unit & Integration tests
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Integration tests
+        run: npm run test:integration
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 3: E2E tests (Playwright — Chromium only for CI speed)
+# ─────────────────────────────────────────────────────────────────────────────
+  e2e:
+    name: E2E tests
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (Chromium only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Production build (required by playwright webServer)
+        run: npm run build:prod
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 4: Build artifact
+# ─────────────────────────────────────────────────────────────────────────────
+  build:
+    name: Production build
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build:prod
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 5: Preview deploy (PRs only)
+# TODO: replace the echo with your actual deploy provider command
+# ─────────────────────────────────────────────────────────────────────────────
+  deploy-preview:
+    name: Deploy preview
+    needs: build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment: preview
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+
+      # TODO v2.5-0-alpha: Replace with real deploy command (Vercel / Netlify / Firebase)
+      - name: Deploy to preview environment
+        run: echo "🚀 Deploying dist/ to preview — configure your deploy provider here"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 6: Production deploy (push to main only, requires manual approval)
+# TODO: replace the echo with your actual deploy provider command
+# ─────────────────────────────────────────────────────────────────────────────
+  deploy-prod:
+    name: Deploy production
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production   # Requires manual reviewer approval in GitHub Environments
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+
+      # TODO v2.5-0-alpha: Replace with real deploy command
+      - name: Deploy to production
+        run: echo "🚀 Deploying dist/ to production — configure your deploy provider here"
