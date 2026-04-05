@@ -71,29 +71,8 @@ export const usePatternGeneration = () => {
       const patternObjects = generateChunkWithPatterns(chunkStart, chunkSize);
 
       // Конвертируем в объекты из пула
-      for (const patternObj of patternObjects) {
-        // 🛑 TEMPORARY FIX: Disable EVERYTHING (coins, bonuses, obstacles) as requested by user
-        continue; // Skip all object generation
-
-        const pooledObject = gameObjectPool.acquire();
-
-        // Копируем свойства из паттерна
-        pooledObject.id = patternObj.id;
-        pooledObject.type = patternObj.type;
-        pooledObject.position = [...patternObj.position];
-        pooledObject.active = true;
-        pooledObject.color = patternObj.color;
-        pooledObject.points = patternObj.points;
-        pooledObject.rotationSpeed = patternObj.rotationSpeed;
-        pooledObject.scale = patternObj.scale;
-        pooledObject.obstacleType = patternObj.obstacleType;
-        pooledObject.requiredAction = patternObj.requiredAction;
-        pooledObject.height = patternObj.height;
-        pooledObject.mazePatternId = patternObj.mazePatternId;
-        pooledObject.properties = patternObj.properties;
-
-        objects.push(pooledObject);
-      }
+      // 🛑 TEMPORARY FIX: Disable EVERYTHING (coins, bonuses, obstacles) as requested by user
+      void patternObjects; // suppress unused variable
 
       lastGeneratedChunk.current = chunkIndex;
 

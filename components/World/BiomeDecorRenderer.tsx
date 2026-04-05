@@ -12,7 +12,6 @@ import { getGeometryPool } from '../../infrastructure/rendering/GeometryPool';
 import { scheduleMatrixUpdate } from '../System/InstanceUpdateScheduler';
 import { registerGameLoopCallback, unregisterGameLoopCallback } from '../System/GameLoopRegistry';
 import { safeDispose } from '../../utils/errorHandler';
-import { getPerformanceManager, QualityLevel } from '../../infrastructure/performance/PerformanceManager';
 
 import { CurveHelper } from '../../core/utils/CurveHelper';
 import { applyWorldBending } from './WorldBendingShader';
@@ -29,7 +28,6 @@ export const BiomeDecorRenderer: React.FC<BiomeDecorProps> = React.memo(({ biome
     const MAX_COUNT = 300;
     const _dummy = useMemo(() => new Object3D(), []);
     const frameSkipRef = useRef(0);
-    const pm = getPerformanceManager();
 
     const jungleRef = useRef<InstancedMesh>(null);
     const veinRef = useRef<InstancedMesh>(null);

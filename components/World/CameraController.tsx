@@ -109,7 +109,7 @@ const CameraController: React.FC = () => {
   useEffect(() => {
     const updateCamera = (delta: number, _time: number) => {
       const state = useStore.getState();
-      const { status, localPlayerState, speedBoostActive, isDashing, speed } = state;
+      const { status, localPlayerState } = state;
 
       // Allow camera updates in MENU, COUNTDOWN, PLAYING, etc.
       // Only skip heavy UI states or showcasing
@@ -170,13 +170,8 @@ const CameraController: React.FC = () => {
       const currentLerp = 25.0; // Instant follow
       currentPos.current.lerp(targetPos.current, delta * currentLerp);
 
-      // STRICT CAMERA: No shake allowed - rigid translation only
-      const shakeOffset = 0;
+      // STRICT CAMERA: No shake - rigid translation only
       shakeDirection.current.set(0, 0, 0);
-
-      // 📸 Camera Roll (Tilt) - ENTIRELY REMOVED FOR STRICT HORIZON
-      const finalRoll = 0.0;
-      camera.rotation.z = 0.0;
 
       // Disable shake entirely for strict style
       camera.position.copy(currentPos.current);

@@ -8,7 +8,6 @@ export const GameHUD: React.FC = () => {
   const health = useStore((s) => s.lives || 3); // Using lives instead of health
   const multiplier = useStore((s) => s.multiplier || 1);
   const status = useStore((s) => s.status);
-  const vitalityPulse = useStore((s) => s.vitalityPulse || 0);
   const setVitalityPulse = useStore((s) => s.setVitalityPulse);
 
   const pulse = useVitalityPulse();

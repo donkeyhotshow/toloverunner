@@ -41,9 +41,9 @@ describe('LocalLeaderboard', () => {
         lb.addEntry(makeEntry(200));
         lb.addEntry(makeEntry(100));
         const top = lb.getTopN(3);
-        expect(top[0].score).toBe(200);
-        expect(top[1].score).toBe(100);
-        expect(top[2].score).toBe(50);
+        expect(top[0]!.score).toBe(200);
+        expect(top[1]!.score).toBe(100);
+        expect(top[2]!.score).toBe(50);
     });
 
     it('getTopN limits the result to n', () => {
@@ -71,6 +71,6 @@ describe('LocalLeaderboard', () => {
 
         const lb2 = new LocalLeaderboard(); // loads from localStorage
         expect(lb2.count).toBe(1);
-        expect(lb2.getTopN(1)[0].playerName).toBe('Hero');
+        expect(lb2.getTopN(1)[0]!.playerName).toBe('Hero');
     });
 });

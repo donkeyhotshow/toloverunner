@@ -386,7 +386,6 @@ const inputManager = new EnhancedInputManager();
 
 // React компонент для інтеграції з грою
 export const EnhancedControls: React.FC = () => {
-    const status = useStore(s => s.status);
     const setLocalPlayerState = useStore(s => s.setLocalPlayerState);
     const dash = useStore(s => s.dash);
     const { triggerAttack } = useCombatSystem(); // ⚔️ Combat Hook

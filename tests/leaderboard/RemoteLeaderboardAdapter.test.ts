@@ -39,8 +39,8 @@ describe('RemoteLeaderboardAdapter', () => {
         adapter.addEntry(makeEntry(100));
         adapter.addEntry(makeEntry(200));
         const top = adapter.getTopN(2);
-        expect(top[0].score).toBe(300);
-        expect(top[1].score).toBe(200);
+        expect(top[0]!.score).toBe(300);
+        expect(top[1]!.score).toBe(200);
     });
 
     it('sync returns a SyncResult with non-negative counts', async () => {

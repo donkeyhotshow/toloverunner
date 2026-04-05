@@ -76,7 +76,7 @@ function createWallGeometry(
 }
 
 // Safe Float32Array access
-function getPosition(positions: Float32Array, index: number): number {
+function _getPosition(positions: Float32Array, index: number): number {
   return positions[index] ?? 0;
 }
 

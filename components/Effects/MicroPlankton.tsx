@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useState } from 'react';
-import { InstancedMesh, Object3D, MeshBasicMaterial, AdditiveBlending, SphereGeometry, Color } from 'three';
+import { InstancedMesh, Object3D, MeshBasicMaterial, AdditiveBlending, SphereGeometry } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useStore } from '../../store';
 import { useBiomeTransition } from '../../hooks/useBiomeManager';

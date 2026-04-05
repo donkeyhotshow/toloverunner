@@ -32,6 +32,10 @@ export default [
         rules: {
             ...reactHooks.configs.recommended.rules,
             'react-hooks/immutability': 'off', // Вимкнуто для Three.js матеріалів
+            // R3F/Three.js intentionally reads refs at render time for performance snapshots
+            'react-hooks/refs': 'off',
+            // React Compiler rule — not applicable to manual memoization in game loops
+            'react-hooks/preserve-manual-memoization': 'off',
             'react-refresh/only-export-components': [
                 'warn',
                 { allowConstantExport: true },

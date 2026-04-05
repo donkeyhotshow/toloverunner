@@ -45,8 +45,7 @@ import { DebugOverlay } from './components/UI/DebugOverlay';
 import { RenderController } from './components/System/RenderController';
 import { RenderDebugger } from './components/System/RenderDebugger';
 import SceneController from './components/World/SceneController';
-import { Environment } from './components/World/Environment';
-import { Atmosphere } from './components/World/Atmosphere';
+
 import { GameplayFeedbackUI } from './components/UI/GameplayFeedbackUI';
 import { EnhancedControls } from './components/Input/EnhancedControls';
 import { AssetShowcase } from './components/Debug/AssetShowcase';

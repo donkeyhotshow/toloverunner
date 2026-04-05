@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { LANE_WIDTH } from '../../constants';
 import { safeDeltaTime } from '../../utils/safeMath';
-import { validateLane, getTrackHeightAtX } from '../../utils/laneUtils';
+import { validateLane } from '../../utils/laneUtils';
 
 /**
  * Система физики игрока (СТАБИЛИЗИРОВАННАЯ ВЕРСИЯ)
@@ -188,14 +188,15 @@ export class PlayerPhysics {
 
         // 1. Timers
         if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= safeDt;
-        if (this.wasGrounded && !this.isGrounded) {
+        if (this.wasGrounded && !this.isGrounded && !this.isJumping) {
+            // Only set coyote time when walking off an edge, not after a jump
             this.coyoteTimer = this.config.coyoteTime;
         } else if (this.coyoteTimer > 0) {
             this.coyoteTimer -= safeDt;
         }
         this.wasGrounded = this.isGrounded;
 
-        if (this.jumpBufferTimer > 0 && this.isGrounded) {
+        if (this.jumpBufferTimer > 0 && (this.isGrounded || this.coyoteTimer > 0 || this.jumpsRemaining > 0)) {
             this.jump(false);
         }
 

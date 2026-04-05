@@ -52,7 +52,7 @@ describe('SyncClient', () => {
         client.onRemoteState(cb);
         client._simulateRemoteState(makeState({ score: 100 }));
         expect(cb).toHaveBeenCalledOnce();
-        expect(cb.mock.calls[0][0].score).toBe(100);
+        expect(cb.mock.calls[0]![0].score).toBe(100);
     });
 
     it('onRemoteState unsubscribe prevents further calls', async () => {

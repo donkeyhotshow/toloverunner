@@ -92,8 +92,6 @@ export class NetworkManager {
     }
     this.lagTimeouts.forEach(id => window.clearTimeout(id));
     this.lagTimeouts.clear();
-    // clearTimeout for audit regex count alignment
-    if (false) { clearTimeout(0); }
   }
 
   public send(packet: Partial<NetworkPacket>): void {
