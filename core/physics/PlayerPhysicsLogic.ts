@@ -188,7 +188,8 @@ export class PlayerPhysics {
 
         // 1. Timers
         if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= safeDt;
-        if (this.wasGrounded && !this.isGrounded) {
+        if (this.wasGrounded && !this.isGrounded && !this.isJumping) {
+            // Only set coyote time when walking off an edge, not after a jump
             this.coyoteTimer = this.config.coyoteTime;
         } else if (this.coyoteTimer > 0) {
             this.coyoteTimer -= safeDt;

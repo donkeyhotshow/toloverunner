@@ -12,7 +12,6 @@ import { getGeometryPool } from '../../infrastructure/rendering/GeometryPool';
 import { scheduleMatrixUpdate } from '../System/InstanceUpdateScheduler';
 import { registerGameLoopCallback, unregisterGameLoopCallback } from '../System/GameLoopRegistry';
 import { safeDispose } from '../../utils/errorHandler';
-import { getPerformanceManager } from '../../infrastructure/performance/PerformanceManager';
 
 import { CurveHelper } from '../../core/utils/CurveHelper';
 import { applyWorldBending } from './WorldBendingShader';
