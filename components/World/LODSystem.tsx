@@ -204,7 +204,7 @@ export const LODMesh: React.FC<LODMeshProps> = ({
             });
         }
 
-        return config.levels.map((level, index) => {
+        return config.levels.map((level, _index) => {
             const args = config.geometryArgs ? [...config.geometryArgs] : [1];
 
             // Adjust segments based on LOD level
@@ -270,7 +270,6 @@ export const LODMesh: React.FC<LODMeshProps> = ({
             onLODChange?.(newLevel, distance);
 
             // Update shadow settings based on LOD
-            const perfSettings = perfManager.getQualitySettings();
             const currentLevelConfig = config.levels[newLevel];
 
             // Adjust quality based on LOD capability
@@ -337,20 +336,20 @@ const DebugLODVisualizer: React.FC<{
     config: LODConfig;
     currentLevel: number;
     position: [number, number, number];
-}> = ({ config, currentLevel, position }) => {
+}> = ({ config, currentLevel: _currentLevel, position }) => {
     const { camera } = useThree();
     const lineRef = useRef<THREE.Line>(null);
 
     useFrame(() => {
         if (!lineRef.current) return;
 
-        const dist = new THREE.Vector3(...position).distanceTo(camera.position);
+        const _dist = new THREE.Vector3(...position).distanceTo(camera.position);
         lineRef.current.visible = true;
 
         // Update debug text
     });
 
-    const points = useMemo(() => {
+    const _points = useMemo(() => {
         const pts: THREE.Vector3[] = [];
         config.levels.forEach((level) => {
             const angle = (level.distance / 50) * Math.PI;
@@ -393,20 +392,20 @@ export const withLOD = <P extends object>(
 };
 
 // Hook for manual LOD control
-export const useLOD = (config: LODConfig) => {
+export const useLOD = (_config: LODConfig) => {
     const [lodLevel, setLodLevel] = useState(0);
-    const { camera } = useThree();
+    const { camera: _camera } = useThree();
 
-    const distance = useRef(0);
+    const distanceRef = useRef(0);
 
-    useFrame(({ clock }) => {
+    useFrame(() => {
         // This would be connected to actual object positions in practice
     });
 
     return {
         lodLevel,
         setLodLevel,
-        distance: distance.current,
+        distance: distanceRef.current,
     };
 };
 

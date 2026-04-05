@@ -167,14 +167,14 @@ export const ToonShadowMaterial: React.FC<ToonShadowMaterialProps> = ({
     gradientPreset = 'classic3',
     customGradientColors,
     gradientSteps,
-    lightDirection = new Vector2(0.5, 0.5),
+    lightDirection: _lightDirection = new Vector2(0.5, 0.5),
     emissive = '#000000',
     emissiveIntensity = 0,
     opacity = 1,
     transparent = false,
     side = 'front',
     nearestFilter = true,
-    customUniforms = {},
+    customUniforms: _customUniforms = {},
     onCreated,
 }) => {
     const materialRef = useRef<MeshToonMaterial>(null);

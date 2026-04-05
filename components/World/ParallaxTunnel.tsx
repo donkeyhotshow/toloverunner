@@ -16,7 +16,7 @@ import { useStore } from '../../store';
 // UV pattern repeat length in world units (must match shader uScrollScale)
 const PATTERN_LENGTH = 200.0;
 
-export const ParallaxTunnel: React.FC<{ totalDistance?: number }> = ({ totalDistance = 0 }) => {
+export const ParallaxTunnel: React.FC<{ totalDistance?: number }> = ({ totalDistance: _totalDistance = 0 }) => {
   const tunnelRef = useRef<THREE.Mesh>(null);
 
   // Accumulated scroll from floating origin resets

@@ -1,17 +1,15 @@
 import React, { useRef, useMemo, useEffect } from 'react';
-import { InstancedMesh, Object3D, MeshToonMaterial, MeshBasicMaterial } from 'three';
+import { InstancedMesh, Object3D, MeshToonMaterial } from 'three';
 
 import { GameObject, ObjectType } from '../../types';
 import { getGeometryPool } from '../../infrastructure/rendering/GeometryPool';
 import { scheduleMatrixUpdate } from '../System/InstanceUpdateScheduler';
 import { registerGameLoopCallback, unregisterGameLoopCallback } from '../System/GameLoopRegistry';
 import { safeDispose } from '../../utils/errorHandler';
-import { getPerformanceManager, QualityLevel } from '../../infrastructure/performance/PerformanceManager';
+import { getPerformanceManager } from '../../infrastructure/performance/PerformanceManager';
 import { CurveHelper } from '../../core/utils/CurveHelper';
 import { applyWorldBending } from './WorldBendingShader';
 import { getDynamicCullingManager } from '../../infrastructure/rendering/DynamicCullingManager';
-
-const OUTLINE_SCALE = 1.08; // Outline thickness for enemy meshes
 
 export const BiologicEnemiesRenderer: React.FC<{
     objectsRef: React.MutableRefObject<GameObject[]>;
@@ -26,7 +24,6 @@ export const BiologicEnemiesRenderer: React.FC<{
     const pupilMeshRef = useRef<InstancedMesh>(null);
 
     const MAX_COUNT = 60; // Max active meshes per type
-    const pm = getPerformanceManager();
 
     const _dummy = useMemo(() => new Object3D(), []);
 

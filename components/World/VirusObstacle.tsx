@@ -18,7 +18,7 @@ import { useRefSafety } from '../../utils/refSafetyHelper';
 import { CurveHelper } from '../../core/utils/CurveHelper';
 import { applyWorldBending } from './WorldBendingShader';
 import { getDynamicCullingManager } from '../../infrastructure/rendering/DynamicCullingManager';
-import { getPerformanceManager, QualityLevel } from '../../infrastructure/performance/PerformanceManager';
+import { getPerformanceManager } from '../../infrastructure/performance/PerformanceManager';
 import { useStore } from '../../store';
 import { BIOME_CONFIG } from '../../constants';
 import { debugError } from '../../utils/debug';
@@ -40,7 +40,7 @@ export const VirusObstacles: React.FC<VirusObstaclesProps> = React.memo(({ objec
     const spikeEulerRef = useRef<Euler>(new Euler());
 
     // Ref safety helper
-    const { areValid, withRefs } = useRefSafety();
+    const { withRefs } = useRefSafety();
 
     const MAX_COUNT = SAFETY_CONFIG.MAX_OBJECTS;
 
@@ -133,8 +133,6 @@ export const VirusObstacles: React.FC<VirusObstaclesProps> = React.memo(({ objec
         applyWorldBending(mat);
         return mat;
     }, []);
-
-      const pm = getPerformanceManager();
 
     useEffect(() => {
         try {

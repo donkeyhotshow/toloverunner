@@ -1,27 +1,27 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { MathUtils, Group } from 'three';
 import { useStore } from '../../store';
+
+// Pre-computed static line data (deterministic, avoids impure Math.random in render)
+const SPEED_LINE_DATA = Array.from({ length: 40 }, (_, i) => {
+    const t = i / 40;
+    return {
+        position: [
+            (((i * 7 + 13) % 40) / 40 - 0.5) * 30,
+            (((i * 11 + 7) % 40) / 40 - 0.5) * 20,
+            -(((i * 3 + 17) % 40) / 40) * 50,
+        ] as [number, number, number],
+        scale: 1 + t * 3,
+        rotation: t * Math.PI,
+    };
+});
 
 export const SpeedLines: React.FC = () => {
     const linesRef = useRef<Group>(null);
     const speedLinesActive = useStore(s => s.speedLinesActive);
     const isDashing = useStore(s => s.isDashing);
     const zenMode = useStore(s => s.zenMode);
-
-    
-    // Create random line segments
-    const lines = useMemo(() => {
-        return Array.from({ length: 40 }, () => ({
-            position: [
-                (Math.random() - 0.5) * 30, // X spread
-                (Math.random() - 0.5) * 20, // Y spread
-                -Math.random() * 50        // Z spread (in front of camera)
-            ],
-            scale: 1 + Math.random() * 3,
-            rotation: Math.random() * Math.PI
-        }));
-    }, []);
 
     useFrame((_state, delta) => {
         if (!linesRef.current) return;
@@ -52,7 +52,7 @@ export const SpeedLines: React.FC = () => {
 
     return (
         <group ref={linesRef} visible={false}>
-            {lines.map((line, i) => (
+            {SPEED_LINE_DATA.map((line, i) => (
                 <mesh key={i} position={line.position as [number, number, number]} rotation-z={line.rotation}>
                     <planeGeometry args={[0.05, line.scale]} />
                     <meshBasicMaterial 

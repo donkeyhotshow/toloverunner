@@ -23,10 +23,10 @@ export const TunnelSystem: React.FC<TunnelSystemProps> = ({
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const clock = useRef(new THREE.Clock());
 
-  const CHUNK_COUNT = Math.ceil((renderDistance * 2) / chunkSize);
+  const _CHUNK_COUNT = Math.ceil((renderDistance * 2) / chunkSize);
 
   useFrame(() => {
-    const time = clock.current.getElapsedTime();
+    const _time = clock.current.getElapsedTime();
     const currentChunk = Math.floor(playerZ / chunkSize);
     
     // Активные чанки вокруг игрока

@@ -1,9 +1,7 @@
 import React from 'react';
 import { GameHUD } from './GameHUD';
-import { useStore } from '../../store';
 
 export const UIStack: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const status = useStore((s) => s.status);
   
   return (
     <div className="relative w-full h-full overflow-hidden">
