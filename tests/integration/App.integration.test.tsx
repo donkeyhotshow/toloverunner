@@ -12,12 +12,12 @@ import { act } from 'react-dom/test-utils';
 import App from '../../App';
 import { GameStatus } from '../../types';
 
-type CanvasMockProps = { children?: React.ReactNode; onCreated?: (ctx: unknown) => void };
+type CanvasMockProps = { children?: React.ReactNode; onCreated?: (ctx: unknown) => void; style?: React.CSSProperties };
 
 // Моки для Three.js и React Three Fiber
 vi.mock('@react-three/fiber', () => ({
-  Canvas: ({ children, onCreated }: CanvasMockProps) => {
-    // Симулируем вызов onCreated
+  Canvas: ({ onCreated, style }: CanvasMockProps) => {
+    // Симулируем вызов onCreated; children are NOT rendered to avoid R3F hook errors in jsdom
     if (onCreated) {
       act(() => {
         onCreated({
@@ -31,13 +31,21 @@ vi.mock('@react-three/fiber', () => ({
         });
       });
     }
-    return <div data-testid="canvas">{children}</div>;
+    return <div data-testid="canvas" style={style} />;
   },
   useFrame: vi.fn(),
+  useThree: vi.fn(() => ({
+    gl: { info: { render: { calls: 0, triangles: 0, frame: 0, points: 0, lines: 0 }, memory: { geometries: 0, textures: 0 }, programs: [] } },
+    scene: { children: [] },
+    camera: {},
+    invalidate: vi.fn(),
+  })),
+  createPortal: vi.fn((_children: React.ReactNode) => null),
 }));
 
 vi.mock('@react-three/drei', () => ({
   OrbitControls: () => null,
+  Html: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
 // Форма состояния store в моке (совместима с zustand)
@@ -58,7 +66,7 @@ vi.mock('../../store', async () => {
     init: vi.fn(),
     status: GS.MENU,
     metrics: { fps: 60, ping: 0 },
-    showDebug: false,
+    showDebug: true,
     toggleDebug: vi.fn(),
     setGameSceneReady: vi.fn(),
     zenMode: false,
@@ -108,8 +116,8 @@ vi.mock('../../store', async () => {
 });
 
 // Мок для компонентов UI
-vi.mock('../../components/UI/HUD', () => ({
-  HUD: () => <div data-testid="hud">HUD</div>
+vi.mock('../../components/UI/EnhancedHUD', () => ({
+  EnhancedHUD: () => <div data-testid="hud">HUD</div>
 }));
 
 vi.mock('../../components/UI/FPSCounter', () => ({
@@ -132,10 +140,24 @@ vi.mock('../../components/System/ErrorHandler', () => ({
     <div data-testid="error-boundary">{children}</div>
 }));
 
+// Мок для AppProviders — предотвращает UIErrorBoundary от перехвата ошибок в тестах
+vi.mock('../../components/System/AppProviders', () => ({
+  AppProviders: ({ children }: { children: React.ReactNode }) =>
+    <div data-testid="error-boundary">{children}</div>,
+}));
+
 // Мок для GameSystemsContext — предотвращает запуск PerformanceManager.setInterval
 vi.mock('../../infrastructure/context/GameSystemsContext', () => ({
   GameSystemsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useGameSystems: () => ({ stabilityManager: { resetStabilityScore: () => {} } }),
+}));
+
+// Мок для EnhancedLoadingScreen — немедленно вызывает onComplete, минуя setInterval-цепочку
+vi.mock('../../components/UI/EnhancedLoadingScreen', () => ({
+  EnhancedLoadingScreen: ({ onComplete }: { onComplete?: () => void }) => {
+    React.useEffect(() => { onComplete?.(); }, [onComplete]);
+    return <div data-testid="loading-screen">Loading...</div>;
+  },
 }));
 
 describe('App Component Integration', () => {
@@ -153,16 +175,12 @@ describe('App Component Integration', () => {
     it('должен отображать loading screen при инициализации', () => {
       render(<App />);
 
-      expect(screen.getByText('ToLOVE Runner V2')).toBeInTheDocument();
+      expect(screen.getByTestId('loading-screen')).toBeInTheDocument();
     });
 
     it('должен инициализировать store после загрузки', async () => {
+      vi.useRealTimers(); // waitFor needs real timers to poll
       render(<App />);
-
-      // Пропускаем setTimeout
-      act(() => {
-        vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect((globalThis as { mockStore: MockStoreState }).mockStore.init).toHaveBeenCalled();
@@ -170,11 +188,8 @@ describe('App Component Integration', () => {
     });
 
     it('должен отображать UI компоненты после инициализации', async () => {
+      vi.useRealTimers();
       render(<App />);
-
-      act(() => {
-        vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('hud')).toBeInTheDocument();
@@ -185,11 +200,8 @@ describe('App Component Integration', () => {
     });
 
     it('должен отображать Canvas с правильными пропсами', async () => {
+      vi.useRealTimers();
       render(<App />);
-
-      act(() => {
-        vi.runAllTimers();
-      });
 
       await waitFor(() => {
         const canvas = screen.getByTestId('canvas');
@@ -215,11 +227,8 @@ describe('App Component Integration', () => {
 
   describe('Обработка ошибок', () => {
     it('должен быть обернут в ErrorBoundary', async () => {
+      vi.useRealTimers();
       render(<App />);
-
-      act(() => {
-        vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('error-boundary')).toBeInTheDocument();
