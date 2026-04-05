@@ -195,7 +195,7 @@ export class PlayerPhysics {
         }
         this.wasGrounded = this.isGrounded;
 
-        if (this.jumpBufferTimer > 0 && this.isGrounded) {
+        if (this.jumpBufferTimer > 0 && (this.isGrounded || this.coyoteTimer > 0 || this.jumpsRemaining > 0)) {
             this.jump(false);
         }
 

@@ -36,7 +36,7 @@ export const InstancedLevelObjects: React.FC<{
 
     // Smart culling: use frustum culling for performance
     // Only disable for very high quality mode where we want everything visible
-    const USE_FRUSTUM_CULLING = pm.getCurrentQuality() !== QualityLevel.ULTRA;
+    const _USE_FRUSTUM_CULLING = pm.getCurrentQuality() !== QualityLevel.ULTRA;
 
     // PERF: Pre-allocated objects to avoid GC pressure
     const _dummy = useMemo(() => new Object3D(), []);

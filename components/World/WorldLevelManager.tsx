@@ -16,7 +16,7 @@ import { debugError, debugLog } from '../../utils/debug';
 import { eventBus } from '../../utils/eventBus';
 
 const ORIGIN_RESET_THRESHOLD = 5000;
-const GRID_SNAP = 1000; // Snap recycled positions to 0.001 precision (1/1000)
+const _GRID_SNAP = 1000; // Snap recycled positions to 0.001 precision (1/1000)
 
 import { InstancedLevelObjects } from './InstancedLevelObjects';
 import { BioInfiniteTrack } from './BioInfiniteTrack';
@@ -222,7 +222,7 @@ export const WorldLevelManager: React.FC = React.memo(() => {
     return (
         <group name="WorldLevel">
             {/* 3. Infinite Track System */}
-            <BioInfiniteTrack playerZ={totalDistanceRef.current} />
+            <BioInfiniteTrack playerZ={0} />
 
             {/* 🛡️ DECORATION (New Biome Decor) */}
             <BiomeDecorRenderer biome={biome} totalDistanceRef={totalDistanceRef} />

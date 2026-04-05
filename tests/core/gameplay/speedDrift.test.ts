@@ -37,11 +37,12 @@ describe('Speed drift guard', () => {
     });
 
     it('speed converges to exactly MAX_SPEED and stays there', () => {
-        const speed1000 = simulateSpeedAccumulation(1000);
-        const speed2000 = simulateSpeedAccumulation(2000);
+        // Need ~2917 iterations to go from RUN_SPEED_BASE=10 to MAX_SPEED=45 at +0.012/step
+        const speed3000 = simulateSpeedAccumulation(3000);
+        const speed4000 = simulateSpeedAccumulation(4000);
         // After saturation both should equal MAX_SPEED — no drift above ceiling
-        expect(speed1000).toBe(speed2000);
-        expect(speed2000).toBe(GAMEPLAY_CONFIG.MAX_SPEED);
+        expect(speed3000).toBe(speed4000);
+        expect(speed4000).toBe(GAMEPLAY_CONFIG.MAX_SPEED);
     });
 
     it('fixed-point increment is monotonically non-decreasing until MAX_SPEED', () => {

@@ -20,7 +20,7 @@ export function createPowerupActions(set: Set, get: Get) {
                 shieldActive: true,
                 shieldTimer: 10
             });
-            eventBus.emit('player:collect', { type: 'shield' });
+            eventBus.emit('player:collect', { type: 'shield', points: 0 });
         },
 
         activateMagnet: () => {
@@ -28,7 +28,7 @@ export function createPowerupActions(set: Set, get: Get) {
                 magnetActive: true,
                 magnetTimer: 10
             });
-            eventBus.emit('player:collect', { type: 'magnet' });
+            eventBus.emit('player:collect', { type: 'magnet', points: 0 });
         },
 
         updateShieldTimer: (delta: number) => {

@@ -132,8 +132,7 @@ export class WorldCollisionSystem implements IWorldCollisionSystem {
             case ObjectType.VIRUS_KILLER:
             case ObjectType.CELL_MEMBRANE:
             case ObjectType.BACTERIA_BLOCKER:
-            // ⚔️ Combat v2.4.0 - Нові типи перешкод
-            case ObjectType.LOW:
+            case ObjectType.LOW: // ⚔️ Combat v2.4.0 - Нові типи перешкод
             case ObjectType.HIGH:
             case ObjectType.COMBAT:
                 this.callbacks.onObstacleHit?.(obj, playerPos);

@@ -500,7 +500,7 @@ export const GlobusBossPhases: React.FC<{
                         groupRef.current.position.add(dir.multiplyScalar(bossConfig.chaseSpeed * 2 * delta));
                     }
                     break;
-                case 'combo':
+                case 'combo': {
                     // Multiple quick attacks
                     const comboPhase = Math.floor(attackTimerRef.current / 0.5) % 4;
                     if (comboPhase < 3) {
@@ -510,12 +510,15 @@ export const GlobusBossPhases: React.FC<{
                         }
                     }
                     break;
-                case 'special':
-                    // Ultimate attack - spawn many projectiles
-                    if (Math.random() < 0.1) {
+                }
+                case 'special': {
+                    // Ultimate attack - spawn many projectiles; use ref for deterministic seeding
+                    const shouldSpawn = (Math.floor(attackTimerRef.current * 1000) % 10) === 0;
+                    if (shouldSpawn) {
                         spawnProjectile('energy', bossConfig.attackDamage * 2);
                     }
                     break;
+                }
             }
         };
 

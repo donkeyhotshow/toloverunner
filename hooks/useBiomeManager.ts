@@ -19,7 +19,7 @@ export function useBiomeTransition() {
     const store = useStore();
     const currentBiome = (store.biome as BiomeType) || BiomeType.BIO_JUNGLE;
     const [transitionProgress, setTransitionProgress] = useState(1);
-    const [prevBiome, setPrevBiome] = useState<BiomeType>(currentBiome);
+    const [_prevBiome, setPrevBiome] = useState<BiomeType>(currentBiome);
     const [targetBiome, setTargetBiome] = useState<BiomeType>(currentBiome);
     
     // Lerp colors for smooth transitions
@@ -64,7 +64,7 @@ export function useBiomeTransition() {
 
     // Auto-trigger biome changes every 500 units for testing/infinite feel
     const lastTriggerDist = useRef(0);
-    useFrame((state) => {
+    useFrame((_state) => {
         const dist = (useStore.getState() as any).totalDistance ?? 0;
         if (Math.floor(dist / 500) > Math.floor(lastTriggerDist.current / 500)) {
             lastTriggerDist.current = dist;

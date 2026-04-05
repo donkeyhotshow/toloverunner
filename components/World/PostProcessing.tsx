@@ -26,7 +26,7 @@ export const PostProcessing: React.FC = (): React.ReactElement | null => {
     // Refs instead of state: mutations here never cause React re-renders
     const hitIntensityRef = useRef(0);
     const perfectIntensityRef = useRef(0);
-    const vignetteRef = useRef<VignetteEffect>(null);
+    const vignetteRef = useRef<InstanceType<typeof VignetteEffect>>(null);
     const speedRef = useRef(30);
 
     // Keep speedRef current without subscribing to re-renders on every speed change
@@ -88,7 +88,7 @@ export const PostProcessing: React.FC = (): React.ReactElement | null => {
             multisampling={multisampling}
         >
             {/* 📜 VIGNETTE - subtle frame for immersion; animated via vignetteRef in useFrame */}
-            <Vignette ref={vignetteRef} offset={0.4} darkness={0.3} />
+            <Vignette ref={vignetteRef as React.RefObject<typeof VignetteEffect>} offset={0.4} darkness={0.3} />
         </EffectComposer>
     );
 };

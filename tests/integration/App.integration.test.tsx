@@ -48,10 +48,11 @@ type MockStoreState = Record<string, unknown> & {
 };
 
 // Мок для `useStore` совместим с hoisting vi.mock: создаём фабрику, которая эмулирует zustand API
-vi.mock('../../store', () => {
+vi.mock('../../store', async () => {
+  const { GameStatus: GS } = await import('../../types');
   const mockStore: MockStoreState = {
     init: vi.fn(),
-    status: GameStatus.MENU,
+    status: GS.MENU,
     metrics: { fps: 60, ping: 0 },
   };
 

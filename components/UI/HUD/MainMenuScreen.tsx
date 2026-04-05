@@ -8,10 +8,20 @@ import { Play, Settings, Trophy } from 'lucide-react';
 import { useStore } from '../../../store';
 import { GameMode, GameStatus } from '../../../types';
 
+// Pre-computed star field data — avoids Math.random() calls during render
+const STAR_DATA = Array.from({ length: 60 }, (_, i) => ({
+    width: ((i * 7 + 3) % 5 === 0) ? 2 : 1,
+    height: ((i * 11 + 7) % 5 === 0) ? 2 : 1,
+    left: ((i * 17 + 5) % 100),
+    top: ((i * 13 + 11) % 100),
+    opacity: 0.2 + ((i * 3 + 1) % 10) / 16.7,
+    duration: 1.5 + ((i * 7 + 2) % 30) / 10,
+    delay: ((i * 5 + 3) % 30) / 10,
+}));
+
 export const MainMenuScreen: React.FC = () => {
     const startGame = useStore(s => s.startGame);
     const setStatus = useStore(s => s.setStatus);
-    const showPopups = useStore(s => s.showPopups);
     const setShowPopups = useStore(s => s.setShowPopups);
     const zenMode = useStore(s => s.zenMode);
     const setZenMode = useStore(s => s.setZenMode);
@@ -79,18 +89,18 @@ export const MainMenuScreen: React.FC = () => {
 
             {/* Star field */}
             <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-                {Array.from({ length: 60 }).map((_, i) => (
+                {STAR_DATA.map((star, i) => (
                     <div key={i} style={{
                         position: 'absolute',
-                        width: Math.random() > 0.8 ? 2 : 1,
-                        height: Math.random() > 0.8 ? 2 : 1,
+                        width: star.width,
+                        height: star.height,
                         borderRadius: '50%',
                         background: 'white',
-                        left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * 100}%`,
-                        opacity: 0.2 + Math.random() * 0.6,
-                        animation: `pulse ${1.5 + Math.random() * 3}s ease-in-out infinite`,
-                        animationDelay: `${Math.random() * 3}s`,
+                        left: `${star.left}%`,
+                        top: `${star.top}%`,
+                        opacity: star.opacity,
+                        animation: `pulse ${star.duration}s ease-in-out infinite`,
+                        animationDelay: `${star.delay}s`,
                     }} />
                 ))}
             </div>

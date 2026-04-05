@@ -4,6 +4,9 @@
  * File Types - Типи даних для системи читання файлів
  */
 
+// BufferEncoding is a Node.js type — re-declare it for browser compatibility
+type BufferEncoding = 'ascii' | 'utf8' | 'utf-8' | 'utf16le' | 'ucs2' | 'ucs-2' | 'base64' | 'latin1' | 'binary' | 'hex';
+
 /**
  * Статус файлу
  */

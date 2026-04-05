@@ -247,20 +247,28 @@ export const useIntegratedPlayerSystems = (
     });
   });
   
+  // Read ref values outside useMemo to satisfy react-hooks/refs rule
+  const _position = currentPosition.current;
+  const _velocity = currentVelocity.current;
+  const _scale = currentScale.current;
+  const _physicsState = physicsRef.current?.getState();
+  const _animState = animationRef.current?.getState() ?? PlayerAnimationState.IDLE;
+  const _expression = animationRef.current?.getExpression() ?? 'normal';
+
   // Return integrated state
   return useMemo(() => ({
     // Physics state
-    position: currentPosition.current,
-    velocity: currentVelocity.current,
-    isGrounded: physicsRef.current?.getState().isGrounded ?? true,
-    isJumping: physicsRef.current?.getState().isJumping ?? false,
-    isDashing: physicsRef.current?.getState().isDashing ?? false,
-    isSliding: physicsRef.current?.getState().isSliding ?? false,
+    position: _position,
+    velocity: _velocity,
+    isGrounded: _physicsState?.isGrounded ?? true,
+    isJumping: _physicsState?.isJumping ?? false,
+    isDashing: _physicsState?.isDashing ?? false,
+    isSliding: _physicsState?.isSliding ?? false,
     
     // Animation state
-    animationState: animationRef.current?.getState() ?? PlayerAnimationState.IDLE,
-    scale: currentScale.current,
-    expression: animationRef.current?.getExpression() ?? 'normal',
+    animationState: _animState,
+    scale: _scale,
+    expression: _expression,
     
     // Input handlers
     handleMoveLeft,
@@ -275,6 +283,12 @@ export const useIntegratedPlayerSystems = (
     // Controls
     isControlsEnabled
   }), [
+    _position,
+    _velocity,
+    _physicsState,
+    _animState,
+    _scale,
+    _expression,
     handleMoveLeft,
     handleMoveRight,
     handleJump,

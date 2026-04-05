@@ -185,7 +185,7 @@ export const LODMesh: React.FC<LODMeshProps> = ({
     const lastLevelRef = useRef(0);
 
     // Performance manager reference
-    const perfManager = useMemo(() => getPerformanceManager(), []);
+    const _perfManager = useMemo(() => getPerformanceManager(), []);
 
     // Check interval for LOD switching
     const _checkInterval = config.checkInterval || 100;
@@ -395,17 +395,20 @@ export const withLOD = <P extends object>(
 export const useLOD = (_config: LODConfig) => {
     const [lodLevel, setLodLevel] = useState(0);
     const { camera: _camera } = useThree();
-
+    const [distance, setDistance] = useState(0);
     const distanceRef = useRef(0);
 
     useFrame(() => {
         // This would be connected to actual object positions in practice
+        if (distanceRef.current !== distance) {
+            setDistance(distanceRef.current);
+        }
     });
 
     return {
         lodLevel,
         setLodLevel,
-        distance: distanceRef.current,
+        distance,
     };
 };
 
