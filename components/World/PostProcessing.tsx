@@ -88,7 +88,7 @@ export const PostProcessing: React.FC = (): React.ReactElement | null => {
             multisampling={multisampling}
         >
             {/* 📜 VIGNETTE - subtle frame for immersion; animated via vignetteRef in useFrame */}
-            <Vignette ref={vignetteRef as React.RefObject<typeof VignetteEffect>} offset={0.4} darkness={0.3} />
+            <Vignette ref={vignetteRef as unknown as React.RefObject<typeof VignetteEffect>} offset={0.4} darkness={0.3} />
         </EffectComposer>
     );
 };

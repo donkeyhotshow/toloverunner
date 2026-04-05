@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { LANE_WIDTH } from '../../constants';
 import { safeDeltaTime } from '../../utils/safeMath';
-import { validateLane, getTrackHeightAtX } from '../../utils/laneUtils';
+import { validateLane } from '../../utils/laneUtils';
 
 /**
  * Система физики игрока (СТАБИЛИЗИРОВАННАЯ ВЕРСИЯ)

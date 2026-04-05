@@ -45,6 +45,10 @@ type MockStoreState = Record<string, unknown> & {
   init: ReturnType<typeof vi.fn>;
   status: GameStatus;
   metrics: { fps: number; ping: number };
+  showDebug: boolean;
+  toggleDebug: ReturnType<typeof vi.fn>;
+  setGameSceneReady: ReturnType<typeof vi.fn>;
+  zenMode: boolean;
 };
 
 // Мок для `useStore` совместим с hoisting vi.mock: создаём фабрику, которая эмулирует zustand API
@@ -54,6 +58,10 @@ vi.mock('../../store', async () => {
     init: vi.fn(),
     status: GS.MENU,
     metrics: { fps: 60, ping: 0 },
+    showDebug: false,
+    toggleDebug: vi.fn(),
+    setGameSceneReady: vi.fn(),
+    zenMode: false,
   };
 
   (globalThis as Record<string, unknown>).mockStore = mockStore;
@@ -124,6 +132,12 @@ vi.mock('../../components/System/ErrorHandler', () => ({
     <div data-testid="error-boundary">{children}</div>
 }));
 
+// Мок для GameSystemsContext — предотвращает запуск PerformanceManager.setInterval
+vi.mock('../../infrastructure/context/GameSystemsContext', () => ({
+  GameSystemsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useGameSystems: () => ({ stabilityManager: { resetStabilityScore: () => {} } }),
+}));
+
 describe('App Component Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -139,7 +153,7 @@ describe('App Component Integration', () => {
     it('должен отображать loading screen при инициализации', () => {
       render(<App />);
 
-      expect(screen.getByText('LOADING...')).toBeInTheDocument();
+      expect(screen.getByText('ToLOVE Runner V2')).toBeInTheDocument();
     });
 
     it('должен инициализировать store после загрузки', async () => {
