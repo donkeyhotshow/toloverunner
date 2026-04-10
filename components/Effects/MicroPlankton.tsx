@@ -1,4 +1,4 @@
-﻿import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { InstancedMesh, Object3D, MeshBasicMaterial, AdditiveBlending, SphereGeometry } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useStore } from '../../store';
@@ -63,6 +63,7 @@ export const MicroPlankton: React.FC = () => {
         // for-loop avoids closure allocation per iteration
         for (let i = 0; i < COUNT; i++) {
             const p = particles[i];
+            if (!p) continue;
 
             const offsetY = Math.sin(time * p.vSpeed + p.phase) * 0.2;
             const offsetX = Math.cos(time * p.vSpeed * 0.8 + p.phase) * 0.2;

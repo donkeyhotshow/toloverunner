@@ -201,7 +201,7 @@ export function addSpikes(
  * Create star-shaped geometry
  */
 export function createStarGeometry(pointCount: number, outerRadius: number, innerRadius: number): THREE.ExtrudeGeometry {
-    const shape = new THREE.Shape();
+    const shape = new (THREE as any).Shape();
 
     for (let i = 0; i < pointCount * 2; i++) {
         const angle = (i / (pointCount * 2)) * Math.PI * 2;

@@ -8,7 +8,7 @@
  */
 
 // Re-export the canonical physics state so multiplayer consumers use one type
-export type { IPlayerState } from '../../../core/physics/interfaces';
+export type { IPlayerState } from '../../core/physics/interfaces';
 
 // ── Network wire snapshot ─────────────────────────────────────────────────────
 

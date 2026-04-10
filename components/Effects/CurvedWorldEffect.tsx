@@ -7,11 +7,12 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Object3D, Mesh, Material, Shader, ShaderMaterial, WebGLRenderer } from 'three';
+import { Object3D, Mesh, Material, ShaderMaterial, WebGLRenderer } from 'three';
 
 // Type for materials that may have optional onBeforeCompile (we read it, so allow undefined)
+type ShaderLike = Parameters<Material['onBeforeCompile']>[0];
 type MaterialWithOptionalOnBeforeCompile = ShaderMaterial & {
-    onBeforeCompile?: (shader: Shader, renderer: WebGLRenderer) => void;
+    onBeforeCompile?: (shader: ShaderLike, renderer: WebGLRenderer) => void;
 };
 
 export const CurvedWorldEffect: React.FC = () => {
@@ -34,7 +35,7 @@ export const CurvedWorldEffect: React.FC = () => {
                     originalShaders.current.set(material, originalOnBeforeCompile);
 
                     // Apply curved world shader modification
-                    mat.onBeforeCompile = (shader: Shader, renderer: WebGLRenderer) => {
+                    mat.onBeforeCompile = (shader: ShaderLike, renderer: WebGLRenderer) => {
                         // Call original if exists
                         if (originalOnBeforeCompile) {
                             originalOnBeforeCompile(shader, renderer);

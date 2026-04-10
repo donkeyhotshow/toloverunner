@@ -10,4 +10,4 @@ export * from './gameplay';
 export * from './ui';
 export * from './world';
 export { PLAYER_PHYSICS, COLLISION_CONFIG, ADAPTIVE_PHYSICS_CONFIG } from './physicsConfig';
-export { ONOMATOPOEIA } from './Onomatopoeia';
+export { OnomatopoeiaTags } from './Onomatopoeia';
