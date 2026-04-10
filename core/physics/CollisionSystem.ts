@@ -46,7 +46,8 @@ export class CollisionSystem {
      * Мінімальна швидкість для активації CCD: 10 одиниць/секунду
      */
     private static readonly CCD_VELOCITY_THRESHOLD = 10;
-    private static readonly MAX_RAY_STEPS = 8;
+    // Adaptive: steps = ceil(travelDistance / (playerRadius * 0.5)), capped here
+    private static readonly MAX_RAY_STEPS = 32;
 
     /**
      * Raycast CCD для швидких об'єктів
@@ -93,28 +94,58 @@ export class CollisionSystem {
 
     /**
      * ПРОСУНУТА ПЕРЕВІРКА КОЛІЗІЙ З CCD
-     * Використовує raycast для швидких об'єктів
+     * При швидкості вище CCD_VELOCITY_THRESHOLD виконує sweep по траєкторії,
+     * щоб уникнути "ghost hits" та "pass through" на великих швидкостях.
      */
     static checkWithCCD(
         playerX: number,
         playerY: number,
-        _prevPlayerX: number,
-        _prevPlayerY: number,
-        _playerVelocity: number,
+        prevPlayerX: number,
+        prevPlayerY: number,
+        playerVelocity: number,
         objects: GameObject[],
         currentDistance: number,
         previousDistance: number = currentDistance,
         isDashing: boolean = false,
         isSliding: boolean = false
     ): CollisionResult {
-        // Touch CCD helpers so they are not tree-shaken by TS
-        void CollisionSystem.CCD_VELOCITY_THRESHOLD;
-        void CollisionSystem.checkRayCCD;
-        // Спочатку викликаємо стандартну перевірку через окремий інстанс
-        const system = new CollisionSystem();
-        return system.checkSimple(
-            playerX, playerY, objects, currentDistance, previousDistance, isDashing, isSliding
+        const useCCD = Math.abs(playerVelocity) >= CollisionSystem.CCD_VELOCITY_THRESHOLD ||
+                       Math.abs(currentDistance - previousDistance) > CollisionSystem.PLAYER_RADIUS;
+
+        if (!useCCD) {
+            // Low speed — simple single-point check is sufficient
+            const system = new CollisionSystem();
+            return system.checkSimple(playerX, playerY, objects, currentDistance, previousDistance, isDashing, isSliding);
+        }
+
+        // CCD sweep: interpolate player position across sub-steps
+        const dx = playerX - prevPlayerX;
+        const dy = playerY - prevPlayerY;
+        const dz = currentDistance - previousDistance;
+        const travelXY = Math.sqrt(dx * dx + dy * dy);
+        const playerRadius = isDashing ? CollisionSystem.PLAYER_RADIUS * 0.5 : CollisionSystem.PLAYER_RADIUS;
+
+        const steps = Math.min(
+            Math.max(2, Math.ceil(travelXY / (playerRadius * 0.5))),
+            CollisionSystem.MAX_RAY_STEPS
         );
+
+        const system = new CollisionSystem();
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const sweepX = prevPlayerX + dx * t;
+            const sweepY = prevPlayerY + dy * t;
+            const sweepDist = previousDistance + dz * t;
+            const sweepPrevDist = previousDistance + dz * (i - 1) / steps;
+
+            const result = system.checkSimple(sweepX, sweepY, objects, sweepDist, sweepPrevDist, isDashing, isSliding);
+            if (result.hit) return result;
+            // Propagate graze/trampoline/jumpedOver from last step
+            if (i === steps) return result;
+        }
+
+        // Fallback (should not reach here)
+        return system.checkSimple(playerX, playerY, objects, currentDistance, previousDistance, isDashing, isSliding);
     }
 
     /**

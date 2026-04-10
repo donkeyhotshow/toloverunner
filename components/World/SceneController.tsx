@@ -1,8 +1,10 @@
-/**
+﻿/**
  * @license SPDX-License-Identifier: Apache-2.0
  *
- * SceneController — Single physics instance, components read from store
- * FIX: useGamePhysics called ONCE, syncs to store, components subscribe independently
+ * SceneController - Single physics instance, components read from store.
+ * Physics is driven exclusively by WorldLevelManager -> World/hooks/useGamePhysics.
+ * PlayerController is a pure renderer - reads position from store only.
+ * EnhancedControls (mounted in App.tsx) owns all input handling.
  */
 
 import React from 'react';
@@ -15,27 +17,10 @@ import CameraController from './CameraController';
 import { GameLoopRunner } from '../System/GameLoopRunner';
 import { RemotePlayer } from './RemotePlayer';
 import { ParallaxTunnel } from './ParallaxTunnel';
-import { useGamePhysics } from '../../hooks/useGamePhysics';
 
-// Inner component so useGamePhysics runs inside Canvas context
-const PhysicsDriver: React.FC<{ speed: number }> = ({ speed }) => {
-  const { jump, switchLane } = useGamePhysics(speed);
-
-  return (
-    <PlayerController
-      visible={true}
-      speed={speed}
-      jump={jump}
-      switchLane={switchLane}
-    />
-  );
-};
-
-// Tunnel only — BioInfiniteTrack is rendered by WorldLevelManager (single source of truth)
 const TunnelOnly: React.FC = () => {
   const position = useStore(s => s.localPlayerState.position);
   const totalDistance = position ? Math.abs(position[2]) : 0;
-
   return <ParallaxTunnel totalDistance={totalDistance} />;
 };
 
@@ -47,12 +32,10 @@ export const SceneController: React.FC = () => {
   return (
     <>
       <GameLoopRunner />
-
       {showWorld && <TunnelOnly />}
-      {showWorld && <PhysicsDriver speed={speed} />}
+      {showWorld && <PlayerController visible={true} speed={speed} />}
       {showWorld && <CameraController />}
       {showWorld && <WorldLevelManager />}
-
       <RemotePlayer />
     </>
   );

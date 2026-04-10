@@ -17,6 +17,9 @@ import { unifiedAudio } from './core/audio/UnifiedAudioManager';
 import { GameStatus } from './types';
 
 let audioRafId: number | null = null;
+// Guard flag: prevents duplicate loop start when subscription fires
+// simultaneously with init()
+let audioLoopRunning = false;
 
 export { initialPlayerState };
 
@@ -24,10 +27,13 @@ export const useStore = createWithEqualityFn<GameState>((...a) => {
     const [set, get, api] = a as [typeof a[0], typeof a[1], { subscribe?: (_selector: (state: GameState) => unknown, _callback: (value: unknown) => void) => void }];
 
     const startAudioLoop = () => {
+        // Prevent duplicate loops from concurrent status changes / init() race
+        if (audioLoopRunning) return;
         if (audioRafId !== null) {
             cancelAnimationFrame(audioRafId);
             audioRafId = null;
         }
+        audioLoopRunning = true;
         const loop = () => {
             const state = get();
             if (state.status === GameStatus.PLAYING) {
@@ -46,6 +52,7 @@ export const useStore = createWithEqualityFn<GameState>((...a) => {
                 audioRafId = requestAnimationFrame(loop);
             } else {
                 audioRafId = null;
+                audioLoopRunning = false;
             }
         };
         audioRafId = requestAnimationFrame(loop);
@@ -56,6 +63,7 @@ export const useStore = createWithEqualityFn<GameState>((...a) => {
             cancelAnimationFrame(audioRafId);
             audioRafId = null;
         }
+        audioLoopRunning = false;
     };
 
     // Subscribe to status to manage long-lived loops predictably

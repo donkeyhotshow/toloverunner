@@ -6,8 +6,10 @@
 
 import * as THREE from 'three';
 import { LANE_WIDTH } from '../../constants';
+import { GRAVITY_Y, JUMP_FORCE_Y, DOUBLE_JUMP_FORCE } from '../../constants/physicsConfig';
 import { safeDeltaTime } from '../../utils/safeMath';
 import { validateLane } from '../../utils/laneUtils';
+import { logger } from '../../utils/logger';
 
 /**
  * Система физики игрока (СТАБИЛИЗИРОВАННАЯ ВЕРСИЯ)
@@ -58,9 +60,9 @@ export class PlayerPhysics {
 
     // СТАБІЛІЗОВАНА ФІЗИКА УЛУЧШЕНА v2.5 - Покращена плавність
     public config = {
-        gravity: 42,              // ⬇ було 50 — м'яка гравітація
-        jumpForce: 22,            // ⬇ було 38 — менша сила
-        doubleJumpForce: 20,      // ≈ подвійний стрибок
+        gravity: GRAVITY_Y,
+        jumpForce: JUMP_FORCE_Y,
+        doubleJumpForce: DOUBLE_JUMP_FORCE,
         laneSpeed: 28,
         laneDamping: 0.88,
         maxVelocity: 200,
@@ -117,7 +119,12 @@ export class PlayerPhysics {
     }
 
     applyRecoil(force: THREE.Vector3) {
+        // Cap accumulated recoil to prevent runaway knockback on rapid hits
+        const MAX_RECOIL = 40;
         this.recoilVelocity.add(force);
+        if (this.recoilVelocity.lengthSq() > MAX_RECOIL * MAX_RECOIL) {
+            this.recoilVelocity.normalize().multiplyScalar(MAX_RECOIL);
+        }
     }
 
     requestJump(): void {
@@ -181,6 +188,8 @@ export class PlayerPhysics {
     }
 
     update(dt: number) {
+        // Guard: reject invalid delta to prevent NaN/Infinity propagation
+        if (!Number.isFinite(dt) || dt <= 0) return;
         const safeDt = safeDeltaTime(dt, 0.05, 0.0001);
         this.updateCount++;
 
@@ -246,7 +255,7 @@ export class PlayerPhysics {
 
         // --- STABILITY LOGGING (For Automated Stress Test) ---
         if (this.updateCount % 100 === 0) {
-            console.log(`[STABILITY] Dist: ${this.position.z.toFixed(2)} | PlayerY: ${this.position.y.toFixed(6)} | Grounded: ${this.isGrounded}`);
+            logger.log(`[STABILITY] Dist: ${this.position.z.toFixed(2)} | PlayerY: ${this.position.y.toFixed(6)} | Grounded: ${this.isGrounded}`);
         }
 
         // 5. Ground Collision — ✨ STRICT ZERO Y DISPLACEMENT ✨
@@ -268,6 +277,8 @@ export class PlayerPhysics {
                 // Clear slide when landing
                 this.isSliding = false;
                 this.slideTimer = 0;
+                // Reset recoil on landing to prevent accumulated knockback
+                this.recoilVelocity.set(0, 0, 0);
                 if (typeof window !== 'undefined') {
                     // FIXED: Add squash animation on landing
                     window.dispatchEvent(new CustomEvent('player-landed', {

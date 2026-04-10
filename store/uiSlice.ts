@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -6,7 +6,7 @@
 import { StateCreator } from 'zustand';
 import { GameState, UISlice } from './storeTypes';
 import { GameStatus } from '../types';
-import { audio } from '../components/System/Audio';
+import { unifiedAudio } from '../core/audio/UnifiedAudioManager';
 
 export const createUISlice: StateCreator<GameState, [], [], UISlice> = (set, get) => ({
      status: GameStatus.MENU,
@@ -54,7 +54,7 @@ export const createUISlice: StateCreator<GameState, [], [], UISlice> = (set, get
      toggleMusic: (force) => {
          const next = force !== undefined ? force : !get().isMusicEnabled;
          set({ isMusicEnabled: next });
-         audio.toggleMusic(next);
+         unifiedAudio.toggleMusic(next);
      },
 
      toggleDebug: () => set((state) => ({ showDebug: !state.showDebug })),

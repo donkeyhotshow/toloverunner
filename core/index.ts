@@ -62,3 +62,11 @@ export {
     type SpawnZone,
     type EnemyPoolStats
 } from './enemies/EnemyPoolManager';
+
+// Physics bounded context — public API contracts (ADR-0003)
+export type {
+    IPlayerState,
+    ICollisionResult,
+    IPlayerInput,
+    IPhysicsSystem,
+} from './physics/interfaces';

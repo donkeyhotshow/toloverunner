@@ -1,11 +1,13 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * 
- * Компонент для предзагрузки текстур при старте игры
+ *
+ * TexturePreloader - preloads critical textures on game start.
+ * onComplete/onProgress are captured via ref to avoid re-triggering
+ * the effect when parent re-renders with new function references.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { TextureType, textureManager } from '../../core/assets/TextureLoader';
 
 interface TexturePreloaderProps {
@@ -13,79 +15,57 @@ interface TexturePreloaderProps {
   onProgress?: (loaded: number, total: number) => void;
 }
 
-/**
- * Компонент для предзагрузки критичных текстур
- * 
- * Загружает основные текстуры игры при монтировании компонента.
- * Показывает прогресс загрузки через callback.
- */
+const CRITICAL_TEXTURES: TextureType[] = [
+  TextureType.ENEMY_VIRUS_PURPLE,
+  TextureType.ENEMY_VIRUS_GREEN,
+  TextureType.FX_PARTICLE,
+  TextureType.FX_GLOW,
+  TextureType.FX_SPARKLE,
+];
+
 export const TexturePreloader: React.FC<TexturePreloaderProps> = ({
   onComplete,
-  onProgress
+  onProgress,
 }) => {
-  const [_loaded, setLoaded] = useState(false);
+  // Capture callbacks in refs so the effect never needs to re-run
+  // when the parent passes new function references on each render.
+  const onCompleteRef = useRef(onComplete);
+  const onProgressRef = useRef(onProgress);
+  onCompleteRef.current = onComplete;
+  onProgressRef.current = onProgress;
 
   useEffect(() => {
-    // Критичные текстуры для загрузки при старте
-    const criticalTextures: TextureType[] = [
-      // Враги (основные)
-      TextureType.ENEMY_VIRUS_PURPLE,
-      TextureType.ENEMY_VIRUS_GREEN,
+    let progressInterval: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
 
-      // Эффекты (часто используемые)
-      TextureType.FX_PARTICLE,
-      TextureType.FX_GLOW,
-      TextureType.FX_SPARKLE,
-    ];
-
-    let progressInterval: ReturnType<typeof setTimeout> | null = null;
-
-    const loadTextures = async () => {
+    const load = async () => {
       try {
-        // Начинаем загрузку
-        const loadPromise = textureManager.preloadTextures(criticalTextures);
+        const loadPromise = textureManager.preloadTextures(CRITICAL_TEXTURES);
 
-        // Отслеживаем прогресс
         progressInterval = setInterval(() => {
+          if (cancelled) return;
           const stats = textureManager.getStats();
-          if (onProgress) {
-            onProgress(stats.loaded, criticalTextures.length);
-          }
+          onProgressRef.current?.(stats.loaded, CRITICAL_TEXTURES.length);
         }, 100);
 
         await loadPromise;
-
-        setLoaded(true);
-        if (onComplete) {
-          onComplete();
-        }
       } catch (error) {
         console.warn('Texture preload failed:', error);
-        // Текстуры не создаются здесь; при ошибке TextureManager кэширует fallback и освобождает их в dispose()
-        setLoaded(true);
-        if (onComplete) {
-          onComplete();
-        }
       } finally {
-        if (progressInterval) {
-          clearInterval(progressInterval);
-        }
+        if (progressInterval) clearInterval(progressInterval);
+        if (!cancelled) onCompleteRef.current?.();
       }
     };
 
-    loadTextures();
+    load();
 
     return () => {
-      if (progressInterval) {
-        clearInterval(progressInterval);
-      }
+      cancelled = true;
+      if (progressInterval) clearInterval(progressInterval);
     };
-  }, [onComplete, onProgress]);
+  // Empty deps: run once on mount. Callbacks are accessed via refs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Невидимый компонент
   return null;
 };
-
-
-
-

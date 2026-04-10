@@ -175,10 +175,19 @@ export class PerformanceManager {
      * Запустить мониторинг производительности
      */
     start() {
+        // Guard: stop any existing sampler before (re)starting
+        if (this.metricSamplerId !== null) {
+            window.clearInterval(this.metricSamplerId);
+            this.metricSamplerId = null;
+        }
+
         this.lastTime = performance.now();
         this.lastFpsUpdateTime = performance.now();
         this.fpsHistory = [];
+        this.metricsLog = [];
         this.frameCount = 0;
+        this.missedInputsCounter = 0;
+        this.physicsSubStepsCounter = 0;
 
         // Expose profiler to window
         if (typeof window !== 'undefined') {
@@ -196,20 +205,13 @@ export class PerformanceManager {
             if (this.metricSamplerId == null) {
                 this.metricSamplerId = window.setInterval(() => {
                     const snapshot = this.getMetrics();
-                    this.metricsLog.push(snapshot);
 
-                    // CRITICAL FIX: More aggressive log size management to prevent memory leaks
-                    const maxLogSize = 360; // 30min history at 5s intervals
-                    if (this.metricsLog.length > maxLogSize) {
-                        // Remove oldest entries, keeping only the most recent
-                        const excessEntries = this.metricsLog.length - maxLogSize;
-                        this.metricsLog.splice(0, excessEntries);
-                    }
-
-                    // Emergency cleanup if log grows too large
-                    if (this.metricsLog.length > maxLogSize * 1.5) {
-                        console.warn('⚠️ Metrics log exceeded safe limit, performing emergency cleanup');
-                        this.metricsLog = this.metricsLog.slice(-maxLogSize);
+                    // Ring-buffer: keep last 360 entries (30 min at 5s intervals)
+                    const MAX_LOG = 360;
+                    if (this.metricsLog.length >= MAX_LOG) {
+                        this.metricsLog[this.metricsLog.length % MAX_LOG] = snapshot;
+                    } else {
+                        this.metricsLog.push(snapshot);
                     }
                     // best-effort console logging (dev)
                     if (Math.random() < 0.1) { // Log 10% of samples to avoid spam
@@ -267,18 +269,11 @@ export class PerformanceManager {
 
         const currentFps = 1000 / Math.max(frameDelta, 0.001);
 
-        // Add to history with strict size enforcement to prevent memory leaks
-        this.fpsHistory.push(currentFps);
-
-        // CRITICAL FIX: Force array size limit to prevent unbounded growth
-        while (this.fpsHistory.length > this.FPS_HISTORY_SIZE) {
-            this.fpsHistory.shift();
-        }
-
-        // Additional safety check - truncate if somehow exceeded
-        if (this.fpsHistory.length > this.FPS_HISTORY_SIZE * 1.5) {
-            console.warn('⚠️ FPS history exceeded safe limit, truncating');
-            this.fpsHistory = this.fpsHistory.slice(-this.FPS_HISTORY_SIZE);
+        // Ring-buffer style: overwrite oldest entry instead of unbounded push
+        if (this.fpsHistory.length >= this.FPS_HISTORY_SIZE) {
+            this.fpsHistory[this.frameCount % this.FPS_HISTORY_SIZE] = currentFps;
+        } else {
+            this.fpsHistory.push(currentFps);
         }
 
         // Throttle metric updates to every 100ms

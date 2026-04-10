@@ -8,11 +8,11 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SyncClient } from '../../src/multiplayer/SyncClient';
-import type { IPlayerState, IAuthToken } from '../../src/multiplayer/interfaces';
+import type { INetworkPlayerSnapshot, IAuthToken } from '../../src/multiplayer/interfaces';
 
 const STUB_TOKEN: IAuthToken = { accessToken: 'test', expiresAt: Date.now() + 9999 };
 
-const makeState = (override: Partial<IPlayerState> = {}): IPlayerState => ({
+const makeSnapshot = (override: Partial<INetworkPlayerSnapshot> = {}): INetworkPlayerSnapshot => ({
     playerId: 'p1',
     position: [0, 0, 0],
     lane: 0,
@@ -46,21 +46,21 @@ describe('SyncClient', () => {
         expect(client.isConnected).toBe(false);
     });
 
-    it('onRemoteState callback is called when state arrives', async () => {
+    it('onRemoteSnapshot callback is called when snapshot arrives', async () => {
         await client.connect('session-1', STUB_TOKEN);
         const cb = vi.fn();
-        client.onRemoteState(cb);
-        client._simulateRemoteState(makeState({ score: 100 }));
+        client.onRemoteSnapshot(cb);
+        client._simulateRemoteSnapshot(makeSnapshot({ score: 100 }));
         expect(cb).toHaveBeenCalledOnce();
         expect(cb.mock.calls[0]![0].score).toBe(100);
     });
 
-    it('onRemoteState unsubscribe prevents further calls', async () => {
+    it('onRemoteSnapshot unsubscribe prevents further calls', async () => {
         await client.connect('session-1', STUB_TOKEN);
         const cb = vi.fn();
-        const unsub = client.onRemoteState(cb);
+        const unsub = client.onRemoteSnapshot(cb);
         unsub();
-        client._simulateRemoteState(makeState());
+        client._simulateRemoteSnapshot(makeSnapshot());
         expect(cb).not.toHaveBeenCalled();
     });
 
@@ -72,8 +72,8 @@ describe('SyncClient', () => {
         expect(cb).toHaveBeenCalledWith('client_requested');
     });
 
-    it('sendState does not throw when connected', async () => {
+    it('sendSnapshot does not throw when connected', async () => {
         await client.connect('session-1', STUB_TOKEN);
-        expect(() => client.sendState(makeState())).not.toThrow();
+        expect(() => client.sendSnapshot(makeSnapshot())).not.toThrow();
     });
 });

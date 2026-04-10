@@ -1,0 +1,125 @@
+{
+  "$schema": "https://kilo.kilo.dev/schema.json",
+  "name": "ToLoveRunner Game Studios",
+  "description": "AI-powered game development studio framework - Claude Code edition",
+  "version": "1.0.0",
+  "mode": "full",
+  "maxParallel": 4,
+  "agents": {
+    "tier1": {
+      "description": "Strategic leadership agents - Opus models",
+      "agents": [
+        "creative-director",
+        "technical-director",
+        "producer"
+      ],
+      "model": "opus"
+    },
+    "tier2": {
+      "description": "Department leads - Sonnet models",
+      "agents": [
+        "game-designer",
+        "lead-programmer",
+        "art-director",
+        "audio-director",
+        "qa-lead",
+        "narrative-designer"
+      ],
+      "model": "sonnet"
+    },
+    "tier3": {
+      "description": "Specialists - Sonnet/Haiku models",
+      "agents": [
+        "gameplay-programmer",
+        "engine-programmer",
+        "ui-programmer",
+        "network-programmer",
+        "technical-artist",
+        "concept-artist",
+        "3d-artist",
+        "2d-artist",
+        "vfx-artist",
+        "sound-designer",
+        "composer",
+        "qa-tester",
+        "writer",
+        "localization-specialist",
+        "systems-designer",
+        "level-designer",
+        "technical-writer"
+      ],
+      "model": "sonnet"
+    },
+    "engines": {
+      "godot4": {
+        "description": "Godot 4 specialized agents",
+        "agents": [
+          "godot-gameplay-dev",
+          "godot-ui-dev",
+          "godot-shader-dev",
+          "godot-network-dev",
+          "godot-2d-specialist",
+          "godot-3d-specialist"
+        ]
+      },
+      "unity": {
+        "description": "Unity specialized agents",
+        "agents": [
+          "unity-csharp-dev",
+          "unity-ShaderGraph-dev",
+          "unity-dots-dev",
+          "unity-netcode-dev",
+          "unity-mobile-dev",
+          "unity-vfx-dev"
+        ]
+      },
+      "unreal5": {
+        "description": "Unreal Engine 5 specialized agents",
+        "agents": [
+          "unreal-blueprint-dev",
+          "unreal-cpp-dev",
+          "unreal-niagara-dev",
+          "unreal-sequencer-dev",
+          "unreal-metaSound-dev",
+          "unreal-optimization-dev"
+        ]
+      }
+    }
+  },
+  "hooks": {
+    "pre-commit": [
+      "validate-hardcode",
+      "validate-json",
+      "validate-typescript"
+    ],
+    "pre-agent": [
+      "check-session-docs"
+    ],
+    "post-agent": [
+      "log-agent-audit"
+    ]
+  },
+  "rules": {
+    "path-validation": {
+      "src/gameplay/**": "no-hardcoded-values",
+      "design/gdd/**": "require-8-sections",
+      "src/engine/**": "no-magic-numbers",
+      "assets/audio/**": "require-metadata",
+      "src/network/**": "strict-types"
+    }
+  },
+  "review-modes": {
+    "full": {
+      "description": "All gates enabled - for production",
+      "gates": ["design", "code", "test", "integration", "performance", "security"]
+    },
+    "lean": {
+      "description": "Phase gates only - for iteration",
+      "gates": ["design", "test"]
+    },
+    "solo": {
+      "description": "No gates - for prototyping",
+      "gates": []
+    }
+  }
+}

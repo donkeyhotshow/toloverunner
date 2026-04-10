@@ -2,14 +2,22 @@
  * @license SPDX-License-Identifier: Apache-2.0
  *
  * Shared interfaces for the multiplayer bounded context (ADR-0003).
- * These types are the Anti-Corruption Layer between multiplayer and core/.
+ * Anti-Corruption Layer between multiplayer and core/.
  *
  * No implementation here — only contracts consumed by AuthService, GameService, SyncClient.
  */
 
-// ── Player state snapshot sent over the wire ──────────────────────────────────
+// Re-export the canonical physics state so multiplayer consumers use one type
+export type { IPlayerState } from '../../../core/physics/interfaces';
 
-export interface IPlayerState {
+// ── Network wire snapshot ─────────────────────────────────────────────────────
+
+/**
+ * Extended snapshot sent over the wire.
+ * Adds network-only fields (playerId, score) on top of the canonical IPlayerState.
+ * Use this type for serialisation / deserialisation only — never as a physics input.
+ */
+export interface INetworkPlayerSnapshot {
     /** Unique player identifier within a session */
     playerId: string;
     /** World position [x, y, z] */
@@ -28,7 +36,7 @@ export interface IPlayerState {
     score: number;
 }
 
-// ── Session/Auth ──────────────────────────────────────────────────────────────
+// ── Session / Auth ────────────────────────────────────────────────────────────
 
 export interface IAuthCredentials {
     username: string;
@@ -69,13 +77,13 @@ export interface IGameService {
 
 // ── Real-time sync ────────────────────────────────────────────────────────────
 
-export type RemoteStateCallback = (state: IPlayerState) => void;
+export type RemoteStateCallback = (snapshot: INetworkPlayerSnapshot) => void;
 export type DisconnectCallback = (reason: string) => void;
 
 export interface IGameSync {
     connect(sessionId: string, token: IAuthToken): Promise<void>;
-    sendState(state: IPlayerState): void;
-    onRemoteState(cb: RemoteStateCallback): () => void;
+    sendSnapshot(snapshot: INetworkPlayerSnapshot): void;
+    onRemoteSnapshot(cb: RemoteStateCallback): () => void;
     onDisconnect(cb: DisconnectCallback): () => void;
     disconnect(): Promise<void>;
     readonly isConnected: boolean;

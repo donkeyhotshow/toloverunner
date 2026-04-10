@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+﻿import React, { useMemo, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import PhysicsEngine from '../../../core/physics/PhysicsEngine';
 import { getPhysicsStabilizer } from '../../../core/physics/PhysicsStabilizer';
@@ -167,7 +167,6 @@ export const useGamePhysics = () => {
                 // 📊 Stability Metrics (throttled by distance)
                 if (Math.abs(currentPhysicsDist - lastLoggedDistanceRef.current) >= 100) { 
                    lastLoggedDistanceRef.current = currentPhysicsDist;
-                   console.log(`[STABILITY] Dist: ${currentPhysicsDist.toFixed(2)} | Modulo: ${(currentPhysicsDist % 1000).toFixed(4)} | Y: ${p.position.y.toFixed(6)}`);
                 }
 
                 if (collision && collision.hit) {

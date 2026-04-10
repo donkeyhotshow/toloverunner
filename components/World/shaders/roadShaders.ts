@@ -4,6 +4,9 @@
  * roadShaders — Bio-organic road shader code
  * Vertex: flat geometry (Y=0), no displacement
  * Fragment: organic stripes, cellular noise, fresnel, pulsing
+ *
+ * Mobile fallback (roadFragmentShaderMobile) uses mediump precision and
+ * skips expensive cellular/fbm passes to avoid black screens on older GPUs.
  */
 
 export const roadVertexShader = /* glsl */ `
@@ -159,3 +162,79 @@ export const roadFragmentShader = /* glsl */ `
     gl_FragColor = vec4(baseColor, 1.0);
   }
 `;
+
+// ── Mobile / low-end GPU fallback shaders ────────────────────────────────────
+// Uses mediump precision and avoids loops/cellular noise that cause black
+// screens on Mali-400, Adreno 3xx, and other older mobile GPUs.
+
+export const roadFragmentShaderMobile = /* glsl */ `
+  precision mediump float;
+
+  uniform float uTime;
+  uniform float uOffset;
+  uniform vec3 uColor1;
+  uniform vec3 uColor2;
+  uniform vec3 uAccent;
+  uniform float uPulseSpeed;
+  uniform float uWaveIntensity;
+  uniform float uStripeFrequency;
+
+  varying vec2 vUv;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    float scrollY = mod(uOffset * 0.01, 1000.0);
+    uv.y += scrollY * 0.001;
+
+    // Simple stripe — no cellular, no fbm
+    float wave = sin(uv.y * uStripeFrequency * 3.14159 + uTime * 0.5) * uWaveIntensity * 0.02;
+    float stripe = step(0.5, fract((uv.y + wave) * uStripeFrequency));
+
+    float pulse = sin(uTime * uPulseSpeed) * 0.075 + 0.925;
+
+    vec3 baseColor = mix(uColor1, uColor2, stripe * 0.6);
+    baseColor *= pulse;
+
+    // Edge darkening
+    float edgeX = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x);
+    baseColor *= edgeX * 0.6 + 0.4;
+
+    // Micro noise (single sample — cheap)
+    float microNoise = hash(uv * 60.0 + uTime * 0.2) * 0.04;
+    baseColor += microNoise;
+
+    gl_FragColor = vec4(baseColor, 1.0);
+  }
+`;
+
+/**
+ * Detects whether the current device should use the mobile fallback shader.
+ * Checks for low-end GPU signatures via WebGL renderer string.
+ */
+export function shouldUseMobileShader(): boolean {
+  if (typeof document === 'undefined') return false;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+    if (!gl) return true; // No WebGL at all — use simplest path
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (!ext) return false;
+    const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) as string;
+    const lower = renderer.toLowerCase();
+    // Known problematic GPU families
+    return (
+      lower.includes('mali-4') ||
+      lower.includes('mali-3') ||
+      lower.includes('adreno 3') ||
+      lower.includes('adreno 2') ||
+      lower.includes('powervr sgx') ||
+      lower.includes('videocore')
+    );
+  } catch {
+    return false;
+  }
+}

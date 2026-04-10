@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -32,7 +32,6 @@ const LazyPostProcessing = React.lazy(() =>
   import('./components/World/PostProcessing').then(m => ({ default: m.PostProcessing }))
 );
 
-import { EnhancedHUD } from './components/UI/EnhancedHUD';
 import { FPSCounter } from './components/UI/FPSCounter';
 import { EnhancedLoadingScreen } from './components/UI/EnhancedLoadingScreen';
 import { useStore } from './store';
@@ -43,6 +42,7 @@ import { BrowserStabilityController } from './components/System/BrowserStability
 import { GameStatus } from './types';
 import { DebugOverlay } from './components/UI/DebugOverlay';
 import { RenderController } from './components/System/RenderController';
+import { StableErrorBoundary } from './components/System/StableErrorBoundary';
 import { RenderDebugger } from './components/System/RenderDebugger';
 import SceneController from './components/World/SceneController';
 
@@ -102,15 +102,19 @@ const AppContent: React.FC = () => {
       });
     }
 
+    let mounted = true;
+
     const t = requestAnimationFrame(() => {
+      if (!mounted) return; // Guard: component unmounted before first frame
       init();
       setReady(true);
-
-      // Reset stability score after initial load to clear any startup errors
       stabilityManager.resetStabilityScore();
     });
 
-    return () => cancelAnimationFrame(t);
+    return () => {
+      mounted = false;
+      cancelAnimationFrame(t);
+    };
   }, [init, stabilityManager]);
 
   // Cleanup debug globals on unmount
@@ -177,9 +181,7 @@ const AppContent: React.FC = () => {
 
           <UIStack>
             {/* UI Overlay */}
-            {/* Old HUDs temporarily hidden or partially kept if needed, but GameHUD is the main one now */}
-            {!zenMode && <EnhancedHUD showAdvancedInfo={showDebug} />}
-            {!zenMode && <FPSCounter />}
+                        {!zenMode && <FPSCounter />}
 
             {/* Debug overlay only if enabled via F3 or dev */}
             {showDebug && <DebugOverlay enabled={showDebug} position="top-left" />}
@@ -262,9 +264,11 @@ const AppContent: React.FC = () => {
               )}
 
               {showGameScene && (
-                <Suspense fallback={null}>
-                  <LazyPostProcessing />
-                </Suspense>
+                <StableErrorBoundary fallback={null}>
+                  <Suspense fallback={null}>
+                    <LazyPostProcessing />
+                  </Suspense>
+                </StableErrorBoundary>
               )}
 
               {/* DynamicEvents MUST be inside Canvas to use useThree() */}

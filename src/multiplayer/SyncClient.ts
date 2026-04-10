@@ -9,7 +9,7 @@
 
 import type {
     IGameSync,
-    IPlayerState,
+    INetworkPlayerSnapshot,
     IAuthToken,
     RemoteStateCallback,
     DisconnectCallback,
@@ -17,7 +17,7 @@ import type {
 
 export class SyncClient implements IGameSync {
     private _connected = false;
-    private _remoteStateCallbacks: RemoteStateCallback[] = [];
+    private _remoteSnapshotCallbacks: RemoteStateCallback[] = [];
     private _disconnectCallbacks: DisconnectCallback[] = [];
 
     get isConnected(): boolean {
@@ -29,15 +29,15 @@ export class SyncClient implements IGameSync {
         this._connected = true;
     }
 
-    sendState(_state: IPlayerState): void {
-        // TODO v2.5-2: Serialize and send state over WebSocket
+    sendSnapshot(_snapshot: INetworkPlayerSnapshot): void {
+        // TODO v2.5-2: Serialize and send snapshot over WebSocket
         if (!this._connected) return;
     }
 
-    onRemoteState(cb: RemoteStateCallback): () => void {
-        this._remoteStateCallbacks.push(cb);
+    onRemoteSnapshot(cb: RemoteStateCallback): () => void {
+        this._remoteSnapshotCallbacks.push(cb);
         return () => {
-            this._remoteStateCallbacks = this._remoteStateCallbacks.filter(c => c !== cb);
+            this._remoteSnapshotCallbacks = this._remoteSnapshotCallbacks.filter(c => c !== cb);
         };
     }
 
@@ -52,12 +52,12 @@ export class SyncClient implements IGameSync {
         // TODO v2.5-2: Graceful WebSocket close
         this._connected = false;
         this._disconnectCallbacks.forEach(cb => cb('client_requested'));
-        this._remoteStateCallbacks = [];
+        this._remoteSnapshotCallbacks = [];
         this._disconnectCallbacks = [];
     }
 
-    /** Test helper — simulate receiving a remote player state */
-    _simulateRemoteState(state: IPlayerState): void {
-        this._remoteStateCallbacks.forEach(cb => cb(state));
+    /** Test helper — simulate receiving a remote player snapshot */
+    _simulateRemoteSnapshot(snapshot: INetworkPlayerSnapshot): void {
+        this._remoteSnapshotCallbacks.forEach(cb => cb(snapshot));
     }
 }

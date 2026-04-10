@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -116,10 +116,9 @@ vi.mock('../../store', async () => {
 });
 
 // Мок для компонентов UI
-vi.mock('../../components/UI/EnhancedHUD', () => ({
-  EnhancedHUD: () => <div data-testid="hud">HUD</div>
+vi.mock('../../components/UI/HUD', () => ({
+  HUD: () => <div data-testid="hud">HUD</div>
 }));
-
 vi.mock('../../components/UI/FPSCounter', () => ({
   FPSCounter: () => <div data-testid="fps-counter">FPS: 60</div>
 }));

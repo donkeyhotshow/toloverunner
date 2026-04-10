@@ -1,11 +1,11 @@
-import React, { useCallback } from 'react';
+﻿import React, { useCallback } from 'react';
 import { ChevronLeft, ChevronRight, ArrowUp } from 'lucide-react';
 import { useStore } from '../../../store';
 import { FEATURE_FLAGS } from '../../../constants';
 
 export const MobileControls: React.FC = () => {
-    const lane = useStore(s => s.localPlayerState.lane);
-    const isJumping = useStore(s => s.localPlayerState.isJumping);
+    const lane = useStore(s => s.localPlayerState?.lane);
+    const isJumping = useStore(s => s.localPlayerState?.isJumping);
     const setLocalPlayerState = useStore(s => s.setLocalPlayerState);
 
     // 🕹️ UI Polish: Dynamic Opacity

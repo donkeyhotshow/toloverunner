@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -15,7 +15,27 @@ import { callbacks, getTimeScale } from './GameLoopRegistry';
 import { hitStopManager } from '../../core/HitStopManager';
 import { getPhysicsStabilizer } from '../../core/physics/PhysicsStabilizer';
 import { SAFETY_CONFIG } from '../../constants';
+import type { RootState } from '@react-three/fiber';
+import type { GameLoopCallback } from './GameLoopRegistry';
 
+/** Safe callback executor: isolates errors so one bad callback cannot break the loop. */
+function runCallbacks(
+    set: Set<GameLoopCallback>,
+    delta: number,
+    time: number,
+    state: RootState,
+    phase: string
+) {
+    set.forEach(cb => {
+        try {
+            cb(delta, time, state);
+        } catch (e) {
+            if (typeof __DEBUG__ !== 'undefined' && __DEBUG__) {
+                console.error(`[GameLoop] ${phase} callback error:`, e);
+            }
+        }
+    });
+}
 
 /**
  * GameLoopRunner - Drives the game loop by calling registered callbacks
@@ -24,57 +44,50 @@ import { SAFETY_CONFIG } from '../../constants';
 export const GameLoopRunner: React.FC = () => {
     const status = useStore(s => s.status);
 
-    // Сброс аккумулятора при паузе и при старте/возобновлении (PLAYING) — избегаем рывка из-за большого delta
     useEffect(() => {
         if (status === GameStatus.PAUSED || status === GameStatus.PLAYING) {
             getPhysicsStabilizer().resetAccumulator();
         }
     }, [status]);
 
-    // ...
     useFrame((state, delta) => {
         const store = useStore.getState();
-        const status = store.status;
+        const currentStatus = store.status;
 
-        // Optimization: Don't run logic if in menu (except rendering maybe?)
-        // Keeping logic consistent with previous implementation:
-        const isPaused = status === GameStatus.PAUSED;
-        const isMenu = status === GameStatus.MENU;
-        const isPlaying = status === GameStatus.PLAYING;
-        const isGameOver = status === GameStatus.GAME_OVER;
-        const isVictory = status === GameStatus.VICTORY;
+        const isPaused = currentStatus === GameStatus.PAUSED;
+        const isMenu = currentStatus === GameStatus.MENU;
+        const isPlaying = currentStatus === GameStatus.PLAYING;
+        const isGameOver = currentStatus === GameStatus.GAME_OVER;
+        const isVictory = currentStatus === GameStatus.VICTORY;
 
         if (!isPlaying && !isMenu && !isPaused && !isGameOver && !isVictory) return;
 
-        // 🔥 HIT STOP LOGIC: Scale delta based on impact state
         const hitStopScale = hitStopManager.update(delta);
         const registryScale = getTimeScale();
         let finalDelta = delta * hitStopScale * registryScale;
-        // Clamp delta for stability (prevents physics spikes on tab switch / lag)
         finalDelta = Math.max(SAFETY_CONFIG.MIN_DELTA_TIME, Math.min(SAFETY_CONFIG.MAX_DELTA_TIME, finalDelta));
 
-        // Use gameDelta for simulation, but pass real delta if needed (rare)
-        // Ideally we pass gameDelta to everything effectively "pausing" the world
-        const time = state.clock.elapsedTime; // Time keeps flowing, but simulation stops
+        const time = state.clock.elapsedTime;
 
-        // Execute registered callbacks in order
-        // 1. World Update (Physics, Collisions)
+        // Strict priority order. Each phase isolated: error in one callback does NOT break the rest.
+
+        // 1. World Update (Physics, Collisions) - must run before player
         if (isPlaying) {
-            callbacks.worldUpdate.forEach(cb => cb(finalDelta, time, state));
+            runCallbacks(callbacks.worldUpdate, finalDelta, time, state, 'worldUpdate');
         }
 
-        // 2. Player Update (Input, Movement)
+        // 2. Player Update (Input, Movement) - reads world state written above
         if (isPlaying || isMenu) {
-            callbacks.playerUpdate.forEach(cb => cb(finalDelta, time, state));
+            runCallbacks(callbacks.playerUpdate, finalDelta, time, state, 'playerUpdate');
         }
 
-        // 3. Render Update (Animations, Effects) - always if not paused
+        // 3. Render Update (Animations, Effects) - reads final simulation state
         if (!isPaused) {
-            callbacks.renderUpdate.forEach(cb => cb(finalDelta, time, state));
-            callbacks.lateUpdate.forEach(cb => cb(finalDelta, time, state)); // 🎥 Camera Follow (Late)
+            runCallbacks(callbacks.renderUpdate, finalDelta, time, state, 'renderUpdate');
+            // 4. Late Update - camera follow, post-process (always last)
+            runCallbacks(callbacks.lateUpdate, finalDelta, time, state, 'lateUpdate');
         }
 
-        // Flush all instanced updates immediate (prevents 1-frame lag)
         markFrameFlush();
         flushUpdates();
     });

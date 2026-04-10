@@ -1,9 +1,9 @@
-import { useRef } from 'react';
+﻿import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useStore } from '../store';
 
 // Game Constants
-const LANE_WIDTH = 3.0; // Distance between lanes
+const LANE_WIDTH = 2.0; // Must match constants.ts LANE_WIDTH
 const JUMP_FORCE = 10.0;
 const GRAVITY = 30.0;
 const GROUND_Y = 0.5;
@@ -31,7 +31,6 @@ export const useGamePhysics = (speed: number = 1.0) => {
       state.current.isJumping = true;
       state.current.isGrounded = false;
       state.current.velocityY = JUMP_FORCE;
-      console.log('🎮 JUMP: Started');
     }
   };
 
@@ -39,7 +38,6 @@ export const useGamePhysics = (speed: number = 1.0) => {
     const newTarget = Math.max(-1, Math.min(1, state.current.targetX + direction));
     if (newTarget !== state.current.targetX) {
       state.current.targetX = newTarget;
-      console.log('🎮 LANE SWITCH:', state.current.playerX, '→', newTarget);
     }
   };
 
@@ -71,7 +69,6 @@ export const useGamePhysics = (speed: number = 1.0) => {
           state.current.velocityY = 0;
           state.current.isJumping = false;
           state.current.isGrounded = true;
-          console.log('🎮 JUMP: Landed');
         }
       }
 

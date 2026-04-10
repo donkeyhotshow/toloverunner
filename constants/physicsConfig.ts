@@ -1,8 +1,17 @@
 /**
  * @license SPDX-License-Identifier: Apache-2.0
- * 
+ *
  * PhysicsConfig - Centralized parameters for player movement and collision.
+ *
+ * SINGLE SOURCE OF TRUTH for all physics values (ADR-0001 / ARCHITECTURE.md).
+ * gameplay.ts re-exports GRAVITY_Y, JUMP_FORCE_Y, DOUBLE_JUMP_FORCE from here —
+ * do NOT duplicate these values elsewhere.
  */
+
+// ── Core jump / gravity scalars (used by PlayerPhysics.config) ────────────────
+export const GRAVITY_Y = 42;
+export const JUMP_FORCE_Y = 22;
+export const DOUBLE_JUMP_FORCE = 20;
 
 export const PLAYER_PHYSICS = {
     // Spring physics for movement/animations
