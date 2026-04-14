@@ -187,30 +187,25 @@ npm run preview
 
 ## 📚 **Документация**
 
-### **Основная документация:**
-- **[docs/THREE_JS_BUGS.md](./docs/THREE_JS_BUGS.md)** - Отчёт по Three.js/R3F-багам и исправлениям
+### **Статус и история:**
+- **[docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md)** - Текущий статус, критерии играбельности, известные проблемы
 - **[CHANGELOG.md](./CHANGELOG.md)** - История версий и изменений
-- **[docs/RUNBOOK_DEPLOY.md](./docs/RUNBOOK_DEPLOY.md)** - Развёртывание (Docker, Vercel, переменные окружения)
-- **[docs/reports/FINAL_REPORT.md](./docs/reports/FINAL_REPORT.md)** - Финальный отчет о проекте
+- **[ROADMAP.md](./ROADMAP.md)** - Дорожная карта
+
+### **Архитектура:**
 - **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Архитектура и дизайн системы
-- **[docs/adr/0001-stabilization-strategy.md](./docs/adr/0001-stabilization-strategy.md)** - Решения по стабилизации, тестам, откату
-- **[docs/reports/ESLINT_BASELINE.md](./docs/reports/ESLINT_BASELINE.md)** - Базовый отчёт ESLint, P0/P1
-- **[docs/reports/PROJECT_HEALTH_AUDIT_REPORT.md](./docs/reports/PROJECT_HEALTH_AUDIT_REPORT.md)** - Аудит кодовой базы
-- **[docs/reports/PHYSICS_ANALYSIS_REPORT.md](./docs/reports/PHYSICS_ANALYSIS_REPORT.md)** - Анализ физики
-- **[docs/reports/TECHNICAL_AUDIT_REPORT.md](./docs/reports/TECHNICAL_AUDIT_REPORT.md)** - Технический аудит
+- **[docs/CORE_SYSTEMS.md](./docs/CORE_SYSTEMS.md)** - Основные системы и компоненты
+- **[docs/adr/](./docs/adr/)** - Architecture Decision Records (ADR-0001..0004)
+- **[docs/THREE_JS_BUGS.md](./docs/THREE_JS_BUGS.md)** - Исправленные баги Three.js/R3F
 
-### **Техническая документация:**
-- **[docs/reports/PROJECT_ANALYSIS_JAN_2026.md](./docs/reports/PROJECT_ANALYSIS_JAN_2026.md)** - Анализ проекта Jan 2026
-- **[docs/GAMEPLAY_TESTING_CHECKLIST.md](./docs/GAMEPLAY_TESTING_CHECKLIST.md)** - Тестирование геймплея
-- **[docs/reports/VISUAL_OVERHAUL_CHANGELOG.md](./docs/reports/VISUAL_OVERHAUL_CHANGELOG.md)** - UI/UX улучшения
-- **[docs/reports/MASTER_CHECKLIST.md](./docs/reports/MASTER_CHECKLIST.md)** - QA тестирование
+### **Разработка и QA:**
+- **[docs/TESTING.md](./docs/TESTING.md)** - Стратегия тестирования и QA
+- **[docs/IMPROVEMENTS_BACKLOG.md](./docs/IMPROVEMENTS_BACKLOG.md)** - Активный бэклог
+- **[docs/TROUBLESHOOTING_GUIDE.md](./docs/TROUBLESHOOTING_GUIDE.md)** - Решение проблем
 
-
-### **Руководства и инструкции:**
-- **[TESTING.md](./docs/TESTING.md)** - Тестирование и QA
-- **[TROUBLESHOOTING_GUIDE.md](./docs/TROUBLESHOOTING_GUIDE.md)** - Решение проблем
-- **[ADVANCED_OPTIMIZATION_GUIDE.md](./docs/ADVANCED_OPTIMIZATION_GUIDE.md)** - Руководство по оптимизации
-- **[TEXTURES.md](./docs/TEXTURES.md)** - Система текстур
+### **Развёртывание:**
+- **[docs/RUNBOOK_DEPLOY.md](./docs/RUNBOOK_DEPLOY.md)** - Развёртывание (Docker, Vercel, переменные окружения)
+- **[docs/SENTRY_SETUP.md](./docs/SENTRY_SETUP.md)** - Настройка мониторинга Sentry
 
 ---
 
@@ -310,10 +305,9 @@ npm run test:e2e          # E2E тесты (Playwright)
 - **RequestAnimationFrame** анализ
 - **Автоматическое выявление** проблем
 
-**Результаты:** ✅ **Система стабильна** (95% тестов пройдено)
+**Результаты:** ✅ **Система стабильна** (65/65 тестов пройдено)
 
-[📊 Подробный отчет](./docs/reports/STABILITY_REPORT.md) |
-[🔥 Руководство по тестированию](./docs/TESTING_GUIDE.md)
+[🔥 Руководство по тестированию](./docs/TESTING.md)
 
 
 ---
@@ -345,7 +339,8 @@ npm run test:e2e          # E2E тесты (Playwright)
 ## 📊 Статус проекта
 
 **Версия:** 2.4.1  
-**Статус:** 🟢 Готово к использованию (Three.js/R3F Fixed)
+**Статус:** 🟢 Готово к использованию  
+**Подробный статус:** [docs/PROJECT_STATUS.md](./docs/PROJECT_STATUS.md)
 
 ---
 
