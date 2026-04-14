@@ -22,6 +22,9 @@ import { safeClamp } from '../../utils/safeMath';
 /** Fixed timestep — identical to PhysicsStabilizer default and WorldLevelManager accumulator. */
 export const FIXED_DT = 1 / 60;
 
+/** Default slow duration in seconds (matches slowDown() default of 2000ms). */
+const DEFAULT_SLOW_DURATION_SEC = 2.0;
+
 /** Possible per-frame inputs for the simulator. */
 export interface SimInput {
     /** Frame index on which this input fires. */
@@ -137,7 +140,7 @@ export function simulate(options: SimOptions): SimState {
                         break;
                     }
                     case 'slow': {
-                        const remainingTime = 2.0; // 2 seconds
+                        const remainingTime = DEFAULT_SLOW_DURATION_SEC;
                         const active = slowEffects.filter(e => e.remainingTime > 0);
                         slowEffects = [...active, { factor: 0.5, remainingTime }];
                         break;

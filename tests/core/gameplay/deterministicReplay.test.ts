@@ -110,7 +110,7 @@ describe('Snapshot stability — frame N always produces state A', () => {
 
 describe('Lag-spike resistance — variable safeDelta does not corrupt state', () => {
     it('slow effect timer counts down by exactly dt each tick', () => {
-        const initialRemaining = 2.0; // seconds
+        const SLOW_DURATION_SEC = 2.0; // matches DEFAULT_SLOW_DURATION_SEC in gameSimulator
         const frames = 60;            // 1 second
 
         const state = simulate({
@@ -121,7 +121,7 @@ describe('Lag-spike resistance — variable safeDelta does not corrupt state', (
 
         // After 60 frames (1s), ~1s should remain on a 2s slow
         const remaining = state.slowEffects[0]?.remainingTime ?? 0;
-        expect(remaining).toBeCloseTo(initialRemaining - frames * FIXED_DT, 5);
+        expect(remaining).toBeCloseTo(SLOW_DURATION_SEC - frames * FIXED_DT, 5);
     });
 
     it('speed boost expires after exactly 5 seconds (300 frames)', () => {

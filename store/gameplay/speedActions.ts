@@ -68,8 +68,8 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
         slowDown: (factor = 0.5, duration = 2000) => {
             // Guard: factor must be in (0, 1] — values > 1 would speed up, < 0 are nonsensical.
             const safeFactor = Math.max(0.01, Math.min(1, factor));
-            // Guard: duration must be positive; convert ms → seconds for internal storage.
-            const safeDurationSec = Math.max(0.016, duration / 1000);
+            // Guard: duration must be positive (at least 1ms); convert ms → seconds for internal storage.
+            const safeDurationSec = Math.max(0.001, duration / 1000);
             set(s => {
                 const active = s.slowEffects.filter(e => e.remainingTime > 0);
                 const next = [...active, { factor: safeFactor, remainingTime: safeDurationSec }];

@@ -232,8 +232,7 @@ export const useGamePhysics = () => {
             isGrounded: finalPlayer.isGrounded
         });
 
-        // Decay momentum/timers — gameClock now updated inside the fixed-step callback above
-        // store.updateGameTimer is no longer called here (would apply variable delta)
+        // Decay momentum/timers — gameClock updated inside the fixed-step callback above
 
         // 🔍 FEAR MECHANIC: Find nearest obstacle in current lane
         let nearestDist = 999;
