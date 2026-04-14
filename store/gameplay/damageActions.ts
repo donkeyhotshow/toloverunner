@@ -113,20 +113,24 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
             const { invincibilityTimer, isInvincible } = get();
             if (invincibilityTimer <= 0 && !isInvincible) return;
             const newTimer = Math.max(0, invincibilityTimer - delta);
-            set({
+            // Use state callback to read isDashing from the same snapshot as the write,
+            // avoiding a stale get() call after set() already applied.
+            set(s => ({
                 invincibilityTimer: newTimer,
-                isInvincible: newTimer > 0 || get().isDashing
-            });
+                isInvincible: newTimer > 0 || s.isDashing,
+            }));
         },
 
         updateDeathTimer: (delta: number) => {
             const { deathTimer } = get();
             if (deathTimer <= 0) return;
             const newTimer = Math.max(0, deathTimer - delta);
-            set({ deathTimer: newTimer });
-            if (newTimer === 0) {
-                set({ status: GameStatus.GAME_OVER });
-            }
+            // Atomic: merge the timer decrement and the status transition into one set()
+            // so we never have an intermediate frame where deathTimer=0 but status=PLAYING.
+            set(newTimer === 0
+                ? { deathTimer: 0, status: GameStatus.GAME_OVER }
+                : { deathTimer: newTimer }
+            );
         },
     };
 }

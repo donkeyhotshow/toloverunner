@@ -25,13 +25,14 @@ type Get = Parameters<StateCreator<GameState>>[1];
 
 type RegisterTimeout = (id: ReturnType<typeof setTimeout>) => void;
 
-/** Compute the final `speed` from `baseSpeed` + active modifiers. Pure function, no side-effects. */
+/** Compute the final `speed` from `baseSpeed` + active modifiers. Pure function, no side-effects.
+ *  Pass `now` (ms) to avoid hidden performance.now() calls inside state updaters. */
 export function computeEffectiveSpeed(
     baseSpeed: number,
     boostActive: boolean,
-    slows: ReadonlyArray<{ factor: number; expiresAt: number }>
+    slows: ReadonlyArray<{ factor: number; expiresAt: number }>,
+    now: number = performance.now()
 ): number {
-    const now = performance.now();
     const boostFactor = boostActive ? SPEED_BOOST_FACTOR : 1;
     const slowFactor = slows
         .filter(e => e.expiresAt > now)
@@ -67,7 +68,7 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
                 const next = [...active, { factor, expiresAt }];
                 return {
                     slowEffects: next,
-                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, next),
+                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, next, now),
                 };
             });
         },
@@ -84,7 +85,7 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
             if (active.length !== slowEffects.length) {
                 set(s => ({
                     slowEffects: active,
-                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, active),
+                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, active, now),
                 }));
             }
         },
@@ -110,12 +111,13 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
             if (!speedBoostActive) return;
             const newTimer = Math.max(0, speedBoostTimer - delta);
             if (newTimer === 0) {
+                const now = performance.now();
                 set(s => ({
                     speedBoostTimer: 0,
                     speedBoostActive: false,
                     isSpeedBoostActive: false,
                     isImmortalityActive: s.shieldActive,
-                    speed: computeEffectiveSpeed(s.baseSpeed, false, s.slowEffects),
+                    speed: computeEffectiveSpeed(s.baseSpeed, false, s.slowEffects, now),
                 }));
             } else {
                 set({ speedBoostTimer: newTimer });
@@ -138,13 +140,13 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
             const newMultiplier = Math.floor(newCombo / 5) + 1;
             const finalPoints = (points + bonus) * newMultiplier;
 
-            get().addScore(finalPoints);
-
             // Coin collection nudges baseSpeed by a tiny fixed amount (not speed directly).
             const newBaseSpeed = Math.min(GAMEPLAY_CONFIG.MAX_SPEED, state.baseSpeed + 0.012);
             const momentumIncrement = Math.min(2.0, state.momentum + 0.012);
 
+            // Single atomic set — merges score update + gameplay state (was 2 separate set() calls).
             set((s) => ({
+                score: safeClamp(s.score + finalPoints, 0, GAMEPLAY_CONFIG.MAX_SCORE, s.score),
                 genesCollected: s.genesCollected + 5,
                 combo: newCombo,
                 maxCombo: Math.max(s.maxCombo, newCombo),
@@ -152,7 +154,7 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
                 lastCollectTime: now,
                 perfectTimingBonus: perfectTiming ? bonus : 0,
                 baseSpeed: newBaseSpeed,
-                speed: computeEffectiveSpeed(newBaseSpeed, s.speedBoostActive, s.slowEffects),
+                speed: computeEffectiveSpeed(newBaseSpeed, s.speedBoostActive, s.slowEffects, now),
                 momentum: momentumIncrement,
             }));
 

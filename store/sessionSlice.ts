@@ -95,6 +95,8 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 dashCooldown: 0,
                 isDashing: false,
                 isInvincible: false,
+                invincibilityTimer: 0,
+                deathTimer: 0,          // Guard: prevent updateDeathTimer from triggering GAME_OVER on rapid restart
                 nearestEnemyDistance: 999,
                 // Reset TDI
                 tdi: 0,
@@ -123,10 +125,13 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                     status: GameStatus.PLAYING,
                     lives: 1,
                     gems: gems - 1,
-                    isInvincible: true
+                    // Use the timer system — NOT a raw setTimeout — so updateInvincibilityTimer
+                    // doesn't immediately cancel it on the next frame (when invincibilityTimer=0).
+                    isInvincible: true,
+                    invincibilityTimer: 2.0,
+                    // Ensure deathTimer is cleared so updateDeathTimer doesn't re-trigger GAME_OVER.
+                    deathTimer: 0,
                 });
-                const id = setTimeout(() => set({ isInvincible: false }), 2000);
-                get().registerGameplayTimeout?.(id);
                 return true;
             }
             return false;
