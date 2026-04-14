@@ -36,7 +36,8 @@ export function createPowerupActions(set: Set, get: Get) {
             if (!shieldActive) return;
             const newTimer = Math.max(0, shieldTimer - delta);
             if (newTimer === 0) {
-                set({ shieldTimer: 0, shieldActive: false, isImmortalityActive: get().speedBoostActive });
+                // Use state callback so speedBoostActive is read from the same snapshot as the write.
+                set(s => ({ shieldTimer: 0, shieldActive: false, isImmortalityActive: s.speedBoostActive }));
             } else {
                 set({ shieldTimer: newTimer });
             }

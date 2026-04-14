@@ -60,20 +60,26 @@ export function createComboActions(set: Set, get: Get) {
 
         updateCombo: (delta: number) => {
             const state = get();
-            if (state.comboTimer > 0) {
-                const newTimer = Math.max(0, state.comboTimer - delta);
-                set({ comboTimer: newTimer });
-                if (newTimer === 0 && state.combo > 0) {
-                    get().resetCombo();
-                }
-            }
+            const hasComboTimer = state.comboTimer > 0;
+            const hasAttackTimer = state.attackTimer > 0;
+            if (!hasComboTimer && !hasAttackTimer) return;
 
-            if (state.attackTimer > 0) {
-                const newAttackTimer = Math.max(0, state.attackTimer - delta);
-                set({ attackTimer: newAttackTimer });
-                if (newAttackTimer === 0) {
-                    set({ attackState: 'none' });
-                }
+            const newComboTimer = hasComboTimer ? Math.max(0, state.comboTimer - delta) : state.comboTimer;
+            const newAttackTimer = hasAttackTimer ? Math.max(0, state.attackTimer - delta) : state.attackTimer;
+
+            const comboExpired = hasComboTimer && newComboTimer === 0 && state.combo > 0;
+            const attackExpired = hasAttackTimer && newAttackTimer === 0;
+
+            // Single atomic set — was up to 4 separate set() calls (one per branch + resetCombo).
+            set({
+                comboTimer: newComboTimer,
+                attackTimer: newAttackTimer,
+                ...(attackExpired ? { attackState: 'none' } : {}),
+                ...(comboExpired ? { combo: 0, multiplier: 1, speedLinesActive: false } : {}),
+            });
+
+            if (comboExpired) {
+                eventBus.emit('combat:combo_reset', undefined);
             }
         },
 

@@ -105,7 +105,7 @@ export const useGamePhysics = () => {
 
             let currentPhysicsDist = totalDistanceRef.current - (safeDelta * effectiveSpeed);
 
-            stabilizer.update(delta, (dt: number) => {
+            stabilizer.update(safeDelta, (dt: number) => {
                 const stepMoveDist = effectiveSpeed * dt;
                 currentPhysicsDist += stepMoveDist;
 
@@ -231,8 +231,8 @@ export const useGamePhysics = () => {
             isGrounded: finalPlayer.isGrounded
         });
 
-        // Decay momentum/timers
-        store.updateGameTimer(delta);
+        // Decay momentum/timers — use safeDelta so a tab-switch spike doesn't skip physics
+        store.updateGameTimer(safeDelta);
 
         // 🔍 FEAR MECHANIC: Find nearest obstacle in current lane
         let nearestDist = 999;

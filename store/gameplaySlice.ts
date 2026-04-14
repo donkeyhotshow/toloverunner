@@ -13,7 +13,7 @@
 import { StateCreator } from 'zustand';
 import { GameState, GameplaySlice } from './storeTypes';
 import { GameMode, DNACard } from '../types';
-import { RUN_SPEED_BASE } from '../constants';
+import { RUN_SPEED_BASE, GAMEPLAY_CONFIG } from '../constants';
 import { eventBus } from '../utils/eventBus';
 import { debugLog } from '../utils/debug';
 
@@ -99,8 +99,9 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
 
         // ── Collect Gene (shared — reads from both score and persistence) ──────────
         collectGene: () => {
-            get().addScore(500);
+            // Single atomic set — was addScore (set #1) + separate set (set #2).
             set((s) => ({
+                score: Math.min(GAMEPLAY_CONFIG.MAX_SCORE, s.score + 500),
                 genesCollected: s.genesCollected + 1,
                 gems: s.gems + 1,
                 momentum: Math.min(2.0, s.momentum + 0.1)

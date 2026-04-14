@@ -61,11 +61,15 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
          * correctly — no race conditions from nested setTimeout callbacks.
          */
         slowDown: (factor = 0.5, duration = 2000) => {
+            // Guard: factor must be in (0, 1] — values > 1 would speed up, < 0 are nonsensical.
+            const safeFactor = Math.max(0.01, Math.min(1, factor));
+            // Guard: duration must be positive; zero/negative would produce an already-expired entry.
+            const safeDuration = Math.max(1, duration);
             const now = performance.now();
-            const expiresAt = now + duration;
+            const expiresAt = now + safeDuration;
             set(s => {
                 const active = s.slowEffects.filter(e => e.expiresAt > now);
-                const next = [...active, { factor, expiresAt }];
+                const next = [...active, { factor: safeFactor, expiresAt }];
                 return {
                     slowEffects: next,
                     speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, next, now),
@@ -96,12 +100,13 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
          * speed is restored to baseSpeed × slowFactor — never below progression.
          */
         activateSpeedBoost: () => {
+            const now = performance.now();
             set(s => ({
                 isSpeedBoostActive: true,
                 speedBoostActive: true,
                 speedBoostTimer: 5,
                 isImmortalityActive: true,
-                speed: computeEffectiveSpeed(s.baseSpeed, true, s.slowEffects),
+                speed: computeEffectiveSpeed(s.baseSpeed, true, s.slowEffects, now),
             }));
             eventBus.emit('player:boost', undefined);
         },
