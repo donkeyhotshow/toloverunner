@@ -63,6 +63,21 @@ export {
     type EnemyPoolStats
 } from './enemies/EnemyPoolManager';
 
+// Game Loop — fixed-timestep accumulator (deterministic, FPS-independent)
+export { GameLoop, FIXED_DT, MAX_STEPS } from './gameLoop';
+
+// Core gameplay update — pure deterministic state machine (lockstep-ready)
+export {
+    initialCoreState,
+    applyInput,
+    updateTimers,
+    updateProgression,
+    update,
+    type SlowEffect,
+    type CoreGameState,
+    type CoreInput,
+} from './update';
+
 // Physics bounded context — public API contracts (ADR-0003)
 export type {
     IPlayerState,

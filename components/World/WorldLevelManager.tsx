@@ -14,6 +14,7 @@ import { WIN_DISTANCE } from '../../constants';
 import { safeDeltaTime, isValidNumber } from '../../utils/safeMath';
 import { debugError, debugLog } from '../../utils/debug';
 import { eventBus } from '../../utils/eventBus';
+import { GameLoop } from '../../core/gameLoop';
 
 const ORIGIN_RESET_THRESHOLD = 5000;
 const _GRID_SNAP = 1000; // Snap recycled positions to 0.001 precision (1/1000)
@@ -55,8 +56,8 @@ export const WorldLevelManager: React.FC = React.memo(() => {
     const accumulatedScoreDt = useRef(0); // accumulated time for increaseDistance sync
     const lastStoreUpdate = useRef(0);
     const lastLoggedDistanceRef = useRef(0);
-    // Fixed-timestep accumulator for store timer updates (deterministic, FPS-independent)
-    const timerAccumulator = useRef(0);
+    // Fixed-timestep game loop (replaces manual timerAccumulator + while-loop)
+    const gameLoopRef = useRef(new GameLoop());
 
     // Hooks
     const trackSystem = useTrackSystem();
@@ -76,7 +77,7 @@ export const WorldLevelManager: React.FC = React.memo(() => {
             totalDistanceRef.current = 0;
             accumulatedScoreDistance.current = 0;
             accumulatedScoreDt.current = 0;
-            timerAccumulator.current = 0;
+            gameLoopRef.current.reset();
         }
     }, [isPlaying, trackSystem]);
 
@@ -97,7 +98,6 @@ export const WorldLevelManager: React.FC = React.memo(() => {
         const callback = (delta: number, time: number) => {
             try {
                 const safeDelta = safeDeltaTime(delta, 0.1, 0.001);
-                const FIXED_DT = 1 / 60;
                 const currentSpeed = speed || 30;
                 const boost = speedBoostActive ? 2 : 1;
                 const moveDist = currentSpeed * safeDelta * boost;
@@ -146,21 +146,18 @@ export const WorldLevelManager: React.FC = React.memo(() => {
                 // 2. Systems Update
                 trackSystem.update(totalDistanceRef.current);
 
-                // Fixed-timestep accumulator for store timer updates.
-                // Ensures all timer decrements happen with a deterministic dt (1/60)
-                // regardless of render FPS — same behaviour on 30/60/120 Hz devices.
+                // Fixed-timestep timer updates: all store timer decrements run at exactly
+                // FIXED_DT (1/60 s) per tick regardless of render FPS.
                 const store = useStore.getState();
-                timerAccumulator.current += safeDelta;
-                while (timerAccumulator.current >= FIXED_DT) {
-                    store.updateDashCooldown(FIXED_DT);
-                    store.updateShieldTimer(FIXED_DT);
-                    store.updateMagnetTimer(FIXED_DT);
-                    store.updateSpeedBoostTimer(FIXED_DT);
-                    store.updateInvincibilityTimer(FIXED_DT);
-                    store.updateDeathTimer(FIXED_DT);
-                    store.updateSlowEffects(FIXED_DT);
-                    timerAccumulator.current -= FIXED_DT;
-                }
+                gameLoopRef.current.tick(safeDelta, (dt) => {
+                    store.updateDashCooldown(dt);
+                    store.updateShieldTimer(dt);
+                    store.updateMagnetTimer(dt);
+                    store.updateSpeedBoostTimer(dt);
+                    store.updateInvincibilityTimer(dt);
+                    store.updateDeathTimer(dt);
+                    store.updateSlowEffects(dt);
+                });
 
                 // 3. Culling (High Frequency - Local)
                 const objects = objectsRef.current;
