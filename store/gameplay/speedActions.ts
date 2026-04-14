@@ -4,14 +4,16 @@
  * Speed, distance, and slow-down actions extracted from gameplaySlice.
  * Receives `set`/`get` from the parent slice creator — external API unchanged.
  *
- * ARCHITECTURE (v2.5):
- *   `baseSpeed`  — progression speed driven by time/distance; never modified by powerups.
- *   `slowEffects`— array of active slow modifiers with expiry timestamps.
- *   `speed`      — derived value: baseSpeed × boostFactor × min(slowFactors).
+ * ARCHITECTURE (v2.6 — deterministic):
+ *   `baseSpeed`   — progression speed driven by distance/time; never modified by powerups.
+ *   `slowEffects` — array of active slow modifiers with `remainingTime` (seconds).
+ *                   No wall-clock timestamps — fully deterministic with fixed dt.
+ *   `speed`       — derived: baseSpeed × boostFactor × min(slowFactors).
  *
- *   This prevents the two classic race conditions:
- *   1. Overlapping slowDown() calls restoring to the wrong speed.
- *   2. Speed-boost expiry dropping speed below current progression level.
+ *   Key invariants:
+ *   1. computeEffectiveSpeed is a pure function — no side-effects, no time dependency.
+ *   2. All timing uses gameClock (accumulated fixed-dt ticks), never performance.now().
+ *   3. updateSlowEffects(dt) decrements remainingTime and recomputes speed deterministically.
  */
 
 import { StateCreator } from 'zustand';
@@ -25,17 +27,20 @@ type Get = Parameters<StateCreator<GameState>>[1];
 
 type RegisterTimeout = (id: ReturnType<typeof setTimeout>) => void;
 
-/** Compute the final `speed` from `baseSpeed` + active modifiers. Pure function, no side-effects.
- *  Pass `now` (ms) to avoid hidden performance.now() calls inside state updaters. */
+/**
+ * Compute the final `speed` from `baseSpeed` + active modifiers.
+ *
+ * Pure function — no side-effects, no wall-clock time dependency.
+ * Filters slow effects by `remainingTime > 0` (deterministic countdown).
+ */
 export function computeEffectiveSpeed(
     baseSpeed: number,
     boostActive: boolean,
-    slows: ReadonlyArray<{ factor: number; expiresAt: number }>,
-    now: number = performance.now()
+    slows: ReadonlyArray<{ factor: number; remainingTime: number }>
 ): number {
     const boostFactor = boostActive ? SPEED_BOOST_FACTOR : 1;
     const slowFactor = slows
-        .filter(e => e.expiresAt > now)
+        .filter(e => e.remainingTime > 0)
         .reduce((min, s) => Math.min(min, s.factor), 1);
     return safeClamp(
         baseSpeed * boostFactor * slowFactor,
@@ -57,56 +62,56 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
 
         /**
          * Apply a temporary speed-reduction modifier.
-         * Uses a timestamp-based expiry system to handle overlapping slow effects
-         * correctly — no race conditions from nested setTimeout callbacks.
+         * Duration is in milliseconds (API-compatible) but stored as seconds internally.
+         * No performance.now() — remainingTime is decremented by fixed dt each tick.
          */
         slowDown: (factor = 0.5, duration = 2000) => {
             // Guard: factor must be in (0, 1] — values > 1 would speed up, < 0 are nonsensical.
             const safeFactor = Math.max(0.01, Math.min(1, factor));
-            // Guard: duration must be positive; zero/negative would produce an already-expired entry.
-            const safeDuration = Math.max(1, duration);
-            const now = performance.now();
-            const expiresAt = now + safeDuration;
+            // Guard: duration must be positive; convert ms → seconds for internal storage.
+            const safeDurationSec = Math.max(0.016, duration / 1000);
             set(s => {
-                const active = s.slowEffects.filter(e => e.expiresAt > now);
-                const next = [...active, { factor: safeFactor, expiresAt }];
+                const active = s.slowEffects.filter(e => e.remainingTime > 0);
+                const next = [...active, { factor: safeFactor, remainingTime: safeDurationSec }];
                 return {
                     slowEffects: next,
-                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, next, now),
+                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, next),
                 };
             });
         },
 
         /**
-         * Remove expired slow effects and recompute speed.
-         * Should be called once per game tick from the game loop.
+         * Decrement remainingTime on all active slow effects by dt (seconds).
+         * Removes expired effects and recomputes speed.
+         * Called once per fixed tick — deterministic, no wall-clock dependency.
          */
-        updateSlowEffects: () => {
+        updateSlowEffects: (dt: number) => {
             const { slowEffects } = get();
             if (!slowEffects.length) return;
-            const now = performance.now();
-            const active = slowEffects.filter(e => e.expiresAt > now);
+            const updated = slowEffects.map(e => ({ ...e, remainingTime: e.remainingTime - dt }));
+            const active = updated.filter(e => e.remainingTime > 0);
             if (active.length !== slowEffects.length) {
                 set(s => ({
                     slowEffects: active,
-                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, active, now),
+                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, active),
                 }));
+            } else {
+                // All still active — just update remainingTime values (no recompute needed)
+                set({ slowEffects: updated });
             }
         },
 
         /**
-         * Activate the speed-boost powerup using a multiplier on baseSpeed
-         * instead of a hardcoded additive value (+15).  When the boost expires,
-         * speed is restored to baseSpeed × slowFactor — never below progression.
+         * Activate the speed-boost powerup using a multiplier on baseSpeed.
+         * When the boost expires, speed is restored to baseSpeed × slowFactor.
          */
         activateSpeedBoost: () => {
-            const now = performance.now();
             set(s => ({
                 isSpeedBoostActive: true,
                 speedBoostActive: true,
                 speedBoostTimer: 5,
                 isImmortalityActive: true,
-                speed: computeEffectiveSpeed(s.baseSpeed, true, s.slowEffects, now),
+                speed: computeEffectiveSpeed(s.baseSpeed, true, s.slowEffects),
             }));
             eventBus.emit('player:boost', undefined);
         },
@@ -116,13 +121,12 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
             if (!speedBoostActive) return;
             const newTimer = Math.max(0, speedBoostTimer - delta);
             if (newTimer === 0) {
-                const now = performance.now();
                 set(s => ({
                     speedBoostTimer: 0,
                     speedBoostActive: false,
                     isSpeedBoostActive: false,
                     isImmortalityActive: s.shieldActive,
-                    speed: computeEffectiveSpeed(s.baseSpeed, false, s.slowEffects, now),
+                    speed: computeEffectiveSpeed(s.baseSpeed, false, s.slowEffects),
                 }));
             } else {
                 set({ speedBoostTimer: newTimer });
@@ -131,12 +135,14 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
 
         collectCoin: (points = 5) => {
             const state = get();
-            const now = performance.now();
-            const timeSinceLastCollect = now - state.lastCollectTime;
+            // Use gameClock (seconds) instead of performance.now() — deterministic
+            const gameClock = state.gameClock;
+            const timeSinceLastCollect = gameClock - state.lastCollectTime;
 
             let bonus = 0;
             let perfectTiming = false;
-            if (timeSinceLastCollect < 500 && timeSinceLastCollect > 0 && state.lastCollectTime > 0) {
+            // Perfect timing window: 0.5 seconds (was 500ms)
+            if (timeSinceLastCollect < 0.5 && timeSinceLastCollect > 0 && state.lastCollectTime > 0) {
                 bonus = 50;
                 perfectTiming = true;
             }
@@ -149,17 +155,16 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
             const newBaseSpeed = Math.min(GAMEPLAY_CONFIG.MAX_SPEED, state.baseSpeed + 0.012);
             const momentumIncrement = Math.min(2.0, state.momentum + 0.012);
 
-            // Single atomic set — merges score update + gameplay state (was 2 separate set() calls).
             set((s) => ({
                 score: safeClamp(s.score + finalPoints, 0, GAMEPLAY_CONFIG.MAX_SCORE, s.score),
                 genesCollected: s.genesCollected + 5,
                 combo: newCombo,
                 maxCombo: Math.max(s.maxCombo, newCombo),
                 multiplier: newMultiplier,
-                lastCollectTime: now,
+                lastCollectTime: gameClock,
                 perfectTimingBonus: perfectTiming ? bonus : 0,
                 baseSpeed: newBaseSpeed,
-                speed: computeEffectiveSpeed(newBaseSpeed, s.speedBoostActive, s.slowEffects, now),
+                speed: computeEffectiveSpeed(newBaseSpeed, s.speedBoostActive, s.slowEffects),
                 momentum: momentumIncrement,
             }));
 
@@ -176,3 +181,4 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
         },
     };
 }
+

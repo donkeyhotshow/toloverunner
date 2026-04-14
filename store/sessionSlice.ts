@@ -31,7 +31,7 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
 
         sessionStartTime: 0,
         timePlayed: 0,
-        lastTimestamp: 0,
+        gameClock: 0,
         nearestEnemyDistance: 999,
         difficultyMultiplier: 1,
 
@@ -75,7 +75,7 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 distance: 0,
                 sessionStartTime: Date.now(),
                 timePlayed: 0,
-                lastTimestamp: performance.now(),
+                gameClock: 0,
                 seed: newSeed,
                 localPlayerState: { ...get().localPlayerState, characterType },
                 // Reset gameplay flags
@@ -89,6 +89,7 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 speedBoostTimer: 0,
                 lastCollectTime: 0,
                 lastGrazeTime: 0,
+                lastDashTime: undefined,
                 perfectTimingBonus: 0,
                 combo: 0,
                 multiplier: 1,
@@ -137,15 +138,17 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
             return false;
         },
 
-        increaseDistance: (delta) => {
+        /**
+         * Advance game distance by `delta` meters and progression by `dt` seconds.
+         * Both values must come from the game loop — no internal performance.now() calls.
+         * `dt` is the fixed timestep (1/60) or accumulated safeDelta for the sync interval.
+         */
+        increaseDistance: (delta, dt) => {
             const safeDelta = safeNumber(delta, 0);
+            const safeDt = safeNumber(dt, 0);
             if (safeDelta <= 0) return;
             set((state) => {
-                const now = performance.now();
-                const lastTimestamp = state.lastTimestamp || now;
-                // Cap dt at 100 ms to prevent runaway progression after tab-switch or GC pause
-                const dt = Math.min((now - lastTimestamp) / 1000, 0.1);
-                const timePlayed = state.timePlayed + dt;
+                const timePlayed = state.timePlayed + safeDt;
 
                 // SPERN RUNNER 2.2.0: Швидкість(t) = 10 м/с × (1 + 0.01 × t)
                 // t = 0 -> 10, t = 60 -> 16, t = 120 -> 22
@@ -177,7 +180,6 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                     // Recompute derived speed, preserving any active powerup modifiers
                     speed: computeEffectiveSpeed(newBaseSpeed, state.speedBoostActive, state.slowEffects),
                     timePlayed,
-                    lastTimestamp: now,
                     difficultyMultiplier
                 };
             });
@@ -187,8 +189,10 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
 
         updateGameTimer: (dt) => {
             // Momentum decays toward 0 over time, clamped to [0, 2.0]
+            // gameClock accumulates fixed-dt ticks — used as game-clock for all gameplay timing.
             set(s => ({
-                momentum: safeClamp(s.momentum - dt * 0.05, 0, 2.0, 1.0)
+                momentum: safeClamp(s.momentum - dt * 0.05, 0, 2.0, 1.0),
+                gameClock: s.gameClock + dt,
             }));
         },
 

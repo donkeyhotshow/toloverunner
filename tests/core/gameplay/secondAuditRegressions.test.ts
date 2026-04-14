@@ -83,28 +83,27 @@ describe('Bug A — physics stabilizer receives safeDelta', () => {
     });
 });
 
-// ── B. activateSpeedBoost now parameter ──────────────────────────────────────
+// ── B. activateSpeedBoost — now pure, no external time dependency ─────────────
 
-describe('Bug B — activateSpeedBoost passes explicit now to computeEffectiveSpeed', () => {
-    it('computeEffectiveSpeed with expired slows and explicit now = correct speed', () => {
-        const now = 10000;
-        // A slow that expires before `now`
-        const slows = [{ factor: 0.3, expiresAt: 9000 }];
-        // When boost activates with explicit now=10000, the expired slow is filtered out
-        const speed = computeEffectiveSpeed(20, true, slows, now);
+describe('Bug B — computeEffectiveSpeed is pure (no now parameter)', () => {
+    it('expired slows (remainingTime ≤ 0) are filtered out', () => {
+        // A slow with remainingTime=0 (expired)
+        const slows = [{ factor: 0.3, remainingTime: 0 }];
+        // Expired slow is filtered → only boost factor applies
+        const speed = computeEffectiveSpeed(20, true, slows);
         // No active slow, boost×2 = 40 → clamped to MAX_SPEED=45, so 40
         expect(speed).toBe(Math.min(GAMEPLAY_CONFIG.MAX_SPEED, 20 * 2));
     });
 
-    it('without explicit now, an active slow at time T would still apply at time T+epsilon', () => {
-        // This proves the importance of passing `now` — using implicit performance.now()
-        // inside set() callback can filter differently than the call site expects.
-        const t0 = 5000;
-        const slows = [{ factor: 0.5, expiresAt: t0 + 1000 }]; // expires at 6000
-        const speedAtT0 = computeEffectiveSpeed(20, false, slows, t0); // still active
-        expect(speedAtT0).toBe(GAMEPLAY_CONFIG.MIN_SPEED); // 20*0.5=10 → clamped to MIN=12
-        const speedAtT2 = computeEffectiveSpeed(20, false, slows, t0 + 2000); // expired
-        expect(speedAtT2).toBe(20); // no active slows
+    it('active slow (remainingTime > 0) still applies', () => {
+        const slows = [{ factor: 0.5, remainingTime: 1.0 }]; // 1s remaining
+        const speedActive = computeEffectiveSpeed(20, false, slows);
+        expect(speedActive).toBe(GAMEPLAY_CONFIG.MIN_SPEED); // 20*0.5=10 → clamped to MIN=12
+
+        // Same slow after expiry
+        const expiredSlows = [{ factor: 0.5, remainingTime: 0 }];
+        const speedExpired = computeEffectiveSpeed(20, false, expiredSlows);
+        expect(speedExpired).toBe(20); // no active slows
     });
 });
 
@@ -280,15 +279,14 @@ describe('Bug G — slowDown input guards', () => {
     it('slowDown with factor>1 would have caused computeEffectiveSpeed to return >MAX_SPEED (pre-fix)', () => {
         // Without the guard: factor=2 passes directly, which would multiply baseSpeed×2
         // (on top of any boost), potentially bypassing MAX_SPEED if boost is also active
-        const now = 1000;
-        const slows = [{ factor: 2.0, expiresAt: 99999 }]; // factor > 1 = "accelerating slow"
-        const speed = computeEffectiveSpeed(20, false, slows, now);
+        const slows = [{ factor: 2.0, remainingTime: 1.0 }]; // factor > 1 = "accelerating slow"
+        const speed = computeEffectiveSpeed(20, false, slows);
         // Even without the guard, computeEffectiveSpeed clamps at MAX_SPEED=45, but
         // a factor>1 is semantically wrong (a "slow" that speeds up)
         expect(speed).toBeLessThanOrEqual(GAMEPLAY_CONFIG.MAX_SPEED);
         // With the guard, factor=2 → safeFactor=1 → no slow effect
-        const guardedSlows = [{ factor: 1, expiresAt: 99999 }];
-        const guardedSpeed = computeEffectiveSpeed(20, false, guardedSlows, now);
+        const guardedSlows = [{ factor: 1, remainingTime: 1.0 }];
+        const guardedSpeed = computeEffectiveSpeed(20, false, guardedSlows);
         expect(guardedSpeed).toBe(20); // factor=1 → no change
     });
 });

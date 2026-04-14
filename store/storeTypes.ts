@@ -59,7 +59,9 @@ export interface SessionSlice {
   // Session Stats
   sessionStartTime: number;
   timePlayed: number;
-  lastTimestamp: number;
+  /** Wall-clock-free game time in seconds. Incremented by fixed dt each tick. Used instead of
+   *  performance.now() for all gameplay timing (combo windows, graze debounce, dash chains). */
+  gameClock: number;
   nearestEnemyDistance: number;
   difficultyMultiplier: number;
 
@@ -78,7 +80,7 @@ export interface SessionSlice {
   resetGame: () => void;
   revive: () => boolean;
 
-  increaseDistance: (delta: number) => void;
+  increaseDistance: (delta: number, dt: number) => void;
   setDistance: (dist: number) => void;
   updateGameTimer: (dt: number) => void;
   addScore: (amount: number) => void;
@@ -146,10 +148,11 @@ export interface GameplaySlice {
   baseSpeed: number;
   /**
    * Active slow effects from environmental hazards (e.g. immune-cell slow).
-   * Each entry expires at a wall-clock timestamp (performance.now()).
-   * `updateSlowEffects()` removes expired entries and recomputes `speed`.
+   * Each entry stores `remainingTime` in **seconds** (decremented by fixed dt each tick).
+   * This is deterministic — no wall-clock timestamps (performance.now) are used.
+   * `updateSlowEffects(dt)` decrements and removes expired entries, then recomputes `speed`.
    */
-  slowEffects: ReadonlyArray<{ factor: number; expiresAt: number }>;
+  slowEffects: ReadonlyArray<{ factor: number; remainingTime: number }>;
 
   // === DNA CARD COLLECTION v2.4.0 ===
   dnaCards: Array<{
@@ -168,8 +171,8 @@ export interface GameplaySlice {
   graze: () => void;
   takeDamage: (obj?: { type?: string | number }) => void;
   slowDown: (factor?: number, duration?: number) => void;
-  /** Remove expired slow effects and recompute speed. Call once per game tick. */
-  updateSlowEffects: () => void;
+  /** Decrement remainingTime on all slow effects by dt (seconds) and recompute speed. Call once per fixed tick. */
+  updateSlowEffects: (dt: number) => void;
   bacteriaJumpBonus: () => void;
   jump: () => void;
   stopJump: () => void;

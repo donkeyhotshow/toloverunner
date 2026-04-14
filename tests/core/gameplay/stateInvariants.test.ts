@@ -20,60 +20,57 @@ import { GAMEPLAY_CONFIG, RUN_SPEED_BASE } from '../../../constants';
 
 describe('computeEffectiveSpeed', () => {
     it('returns baseSpeed when no boost and no slows', () => {
-        const speed = computeEffectiveSpeed(20, false, [], 1000);
+        const speed = computeEffectiveSpeed(20, false, []);
         expect(speed).toBe(20);
     });
 
     it('applies SPEED_BOOST_FACTOR when boost is active', () => {
-        const speed = computeEffectiveSpeed(10, true, [], 1000);
+        const speed = computeEffectiveSpeed(10, true, []);
         // SPEED_BOOST_FACTOR = 2.0, result clamped to MAX_SPEED if needed
         expect(speed).toBe(Math.min(GAMEPLAY_CONFIG.MAX_SPEED, 10 * 2.0));
     });
 
     it('applies the minimum slow factor when multiple slows are stacked', () => {
-        const now = 1000;
         const slows = [
-            { factor: 0.8, expiresAt: now + 1000 },
-            { factor: 0.5, expiresAt: now + 2000 },
-            { factor: 0.3, expiresAt: now + 500 },
+            { factor: 0.8, remainingTime: 1.0 },
+            { factor: 0.5, remainingTime: 2.0 },
+            { factor: 0.3, remainingTime: 0.5 },
         ];
-        const speed = computeEffectiveSpeed(20, false, slows, now);
+        const speed = computeEffectiveSpeed(20, false, slows);
         // min factor = 0.3; 20 * 0.3 = 6 → clamped to MIN_SPEED
         expect(speed).toBe(GAMEPLAY_CONFIG.MIN_SPEED);
     });
 
-    it('ignores expired slow effects (expiresAt <= now)', () => {
-        const now = 5000;
+    it('ignores expired slow effects (remainingTime <= 0)', () => {
         const slows = [
-            { factor: 0.1, expiresAt: 3000 },  // expired
-            { factor: 0.1, expiresAt: 4999 },  // expired (equal is also expired)
+            { factor: 0.1, remainingTime: 0 },    // expired
+            { factor: 0.1, remainingTime: -1 },   // expired (negative)
         ];
-        const speed = computeEffectiveSpeed(20, false, slows, now);
+        const speed = computeEffectiveSpeed(20, false, slows);
         // No active slows → speed = baseSpeed
         expect(speed).toBe(20);
     });
 
     it('is deterministic — same inputs produce the same output regardless of wall time', () => {
-        const slows = [{ factor: 0.6, expiresAt: 99999 }];
-        const a = computeEffectiveSpeed(20, false, slows, 1000);
-        const b = computeEffectiveSpeed(20, false, slows, 1000);
+        const slows = [{ factor: 0.6, remainingTime: 1.5 }];
+        const a = computeEffectiveSpeed(20, false, slows);
+        const b = computeEffectiveSpeed(20, false, slows);
         expect(a).toBe(b);
     });
 
     it('clamps result to MIN_SPEED', () => {
-        const speed = computeEffectiveSpeed(RUN_SPEED_BASE, false, [{ factor: 0.0001, expiresAt: 99999 }], 1000);
+        const speed = computeEffectiveSpeed(RUN_SPEED_BASE, false, [{ factor: 0.0001, remainingTime: 1.0 }]);
         expect(speed).toBeGreaterThanOrEqual(GAMEPLAY_CONFIG.MIN_SPEED);
     });
 
     it('clamps result to MAX_SPEED', () => {
-        const speed = computeEffectiveSpeed(GAMEPLAY_CONFIG.MAX_SPEED + 100, true, [], 1000);
+        const speed = computeEffectiveSpeed(GAMEPLAY_CONFIG.MAX_SPEED + 100, true, []);
         expect(speed).toBeLessThanOrEqual(GAMEPLAY_CONFIG.MAX_SPEED);
     });
 
-    it('treats slows expiring exactly at now as expired', () => {
-        const now = 2000;
-        const slows = [{ factor: 0.1, expiresAt: now }]; // expiresAt === now → expired (> now fails)
-        const speed = computeEffectiveSpeed(20, false, slows, now);
+    it('treats slows with remainingTime exactly 0 as expired', () => {
+        const slows = [{ factor: 0.1, remainingTime: 0 }];
+        const speed = computeEffectiveSpeed(20, false, slows);
         expect(speed).toBe(20);
     });
 });

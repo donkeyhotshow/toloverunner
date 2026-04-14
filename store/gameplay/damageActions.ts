@@ -77,9 +77,11 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
         dash: () => {
             const state = get();
             if (state.dashCooldown <= 0 && !state.isDashing) {
-                const now = performance.now();
+                // Use gameClock (seconds) instead of performance.now() — deterministic
+                const gameClock = state.gameClock;
                 let newChain = 1;
-                if (state.lastDashTime && (now - state.lastDashTime) < 1000) {
+                // Dash chain window: 1.0 second
+                if (state.lastDashTime !== undefined && (gameClock - state.lastDashTime) < 1.0) {
                     newChain = (state.dashChainCount || 0) + 1;
                 }
 
@@ -87,7 +89,7 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
                     isDashing: true,
                     isInvincible: true,
                     dashCooldown: 2.0,
-                    lastDashTime: now,
+                    lastDashTime: gameClock,
                     dashChainCount: newChain
                 });
 

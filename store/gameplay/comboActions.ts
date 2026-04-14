@@ -17,15 +17,16 @@ type Get = Parameters<StateCreator<GameState>>[1];
 export function createComboActions(set: Set, get: Get) {
     return {
         graze: () => {
-            const now = performance.now();
             const state = get();
-            // Use a separate graze timer so coin collection doesn't suppress graze scoring
-            if (now - state.lastGrazeTime < 100) return;
+            // Use gameClock (seconds) instead of performance.now() — deterministic
+            const gameClock = state.gameClock;
+            // Graze debounce: 0.1 seconds (was 100ms)
+            if (gameClock - state.lastGrazeTime < 0.1) return;
 
             set(s => ({
                 score: safeClamp(s.score + 50, 0, GAMEPLAY_CONFIG.MAX_SCORE, s.score),
                 combo: safeClamp(s.combo + 1, 0, Number.MAX_SAFE_INTEGER, s.combo),
-                lastGrazeTime: now,
+                lastGrazeTime: gameClock,
                 momentum: Math.min(2.0, s.momentum + 0.05)
             }));
             eventBus.emit('player:graze', { distance: state.distance });

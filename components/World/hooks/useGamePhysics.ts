@@ -137,8 +137,9 @@ export const useGamePhysics = () => {
                     }
                 }
 
-                // Update combo timers
+                // Update combo timers and game clock — fixed dt ensures determinism
                 store.updateCombo(dt);
+                store.updateGameTimer(dt);
 
                 const collision = physicsEngine.update(
                     dt,
@@ -231,8 +232,8 @@ export const useGamePhysics = () => {
             isGrounded: finalPlayer.isGrounded
         });
 
-        // Decay momentum/timers — use safeDelta so a tab-switch spike doesn't skip physics
-        store.updateGameTimer(safeDelta);
+        // Decay momentum/timers — gameClock now updated inside the fixed-step callback above
+        // store.updateGameTimer is no longer called here (would apply variable delta)
 
         // 🔍 FEAR MECHANIC: Find nearest obstacle in current lane
         let nearestDist = 999;
