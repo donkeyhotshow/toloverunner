@@ -20,7 +20,14 @@
  * produce hundreds of simulation steps.
  */
 
-/** Shared fixed timestep (seconds) — 1/60 s per logic tick. */
+/**
+ * Fixed timestep in seconds (1 ÷ 60 ≈ 16.67 ms per tick).
+ *
+ * 60 Hz is chosen to match the standard 60 fps refresh rate: one logic tick
+ * per rendered frame at native speed.  All gameplay values (speed, timer
+ * durations, momentum decay) are tuned for this rate.  Changing it would
+ * require re-tuning every constant in GAMEPLAY_CONFIG.
+ */
 export const FIXED_DT = 1 / 60;
 
 /** Maximum simulation steps to run in a single render frame. */
