@@ -66,13 +66,15 @@ export const createNetworkSlice: StateCreator<GameState, [], [], NetworkSlice> =
     createRoom: () => {
       debugLog('[Network] Creating room...');
       set({ isMultiplayer: true, isHost: true, connectionStatus: 'connecting' });
-      nm.connect('ws://localhost:8080'); // URL should be from config
+      const wsUrl = (import.meta as unknown as { env?: { VITE_WS_URL?: string } }).env?.VITE_WS_URL ?? 'ws://localhost:8080';
+      nm.connect(wsUrl);
     },
 
     joinRoom: (roomCode: string) => {
       debugLog(`[Network] Joining room ${roomCode}...`);
       set({ isMultiplayer: true, isHost: false, roomCode, connectionStatus: 'connecting' });
-      nm.connect('ws://localhost:8080');
+      const wsUrl = (import.meta as unknown as { env?: { VITE_WS_URL?: string } }).env?.VITE_WS_URL ?? 'ws://localhost:8080';
+      nm.connect(wsUrl);
     },
 
     leaveRoom: () => {

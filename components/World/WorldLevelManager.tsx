@@ -142,6 +142,7 @@ export const WorldLevelManager: React.FC = React.memo(() => {
                 store.updateSpeedBoostTimer(safeDelta);
                 store.updateInvincibilityTimer(safeDelta);
                 store.updateDeathTimer(safeDelta);
+                store.updateSlowEffects();
 
                 // 3. Culling (High Frequency - Local)
                 const objects = objectsRef.current;

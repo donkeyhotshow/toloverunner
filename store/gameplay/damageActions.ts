@@ -23,7 +23,7 @@ type RegisterTimeout = (id: ReturnType<typeof setTimeout>) => void;
 export function createDamageActions(set: Set, get: Get, registerGameplayTimeout: RegisterTimeout) {
     return {
         takeDamage: (obj?: { type?: string | number }) => {
-            const { isImmortalityActive, isInvincible, lives, shieldActive } = get();
+            const { isImmortalityActive, isInvincible, lives, shieldActive, speedBoostActive, maxLives, speed } = get();
 
             // GDD: Viruses bypass shield — instant death
             const ignoresShield = !!obj?.type && VIRUS_TYPE_SET.has(obj.type);
@@ -32,7 +32,7 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
                 set({
                     shieldActive: false,
                     shieldTimer: 0,
-                    isImmortalityActive: get().speedBoostActive
+                    isImmortalityActive: speedBoostActive
                 });
                 eventBus.emit('player:membrane_pop', undefined as void);
                 window.dispatchEvent(new CustomEvent('play-sound', { detail: { sound: 'membrane_pop', volume: 0.8 } }));
@@ -42,39 +42,36 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
             if (!ignoresShield && (isImmortalityActive || isInvincible)) return;
             if (lives <= 0) return;
 
-            const newHearts = ignoresShield ? 0 : lives - 1;
-            const slowedSpeed = Math.max(GAMEPLAY_CONFIG.MIN_SPEED, get().speed * 0.75);
+            const finalLives = ignoresShield ? 0 : Math.max(0, lives - 1);
+            const willDie = finalLives <= 0;
+            const slowedSpeed = Math.max(GAMEPLAY_CONFIG.MIN_SPEED, speed * 0.75);
 
+            // Single atomic set — no intermediate state where the player is
+            // simultaneously "about to die" AND "invincible".
             set({
-                lives: safeClamp(newHearts, 0, get().maxLives, 0),
+                lives: safeClamp(finalLives, 0, maxLives, 0),
                 combo: 0,
                 multiplier: 1,
                 speed: safeClamp(slowedSpeed, GAMEPLAY_CONFIG.MIN_SPEED, GAMEPLAY_CONFIG.MAX_SPEED, slowedSpeed),
-                isInvincible: true,
-                invincibilityTimer: 2.5,
-                nearestEnemyDistance: 999
+                // Invincibility frames only when the player survives the hit
+                isInvincible: !willDie,
+                invincibilityTimer: willDie ? 0 : 2.5,
+                nearestEnemyDistance: 999,
+                ...(willDie ? { deathTimer: 1.0 } : {}),
             });
 
-            eventBus.emit('player:hit', { lives: Math.max(0, newHearts), damage: 1 });
-
-            if (newHearts <= 0 || ignoresShield) {
-                const finalHearts = ignoresShield ? 0 : Math.max(0, newHearts);
-                set({
-                    lives: finalHearts,
-                    deathTimer: 1.0
-                });
+            eventBus.emit('player:hit', { lives: finalLives, damage: 1 });
+            if (willDie) {
                 eventBus.emit('player:death', { score: get().score, distance: get().distance });
             }
         },
 
         jump: () => {
             eventBus.emit('player:jump_input', undefined);
-            window.dispatchEvent(new CustomEvent('player:jump_input'));
         },
 
         stopJump: () => {
             eventBus.emit('player:stop_jump', undefined);
-            window.dispatchEvent(new CustomEvent('player:stop_jump'));
         },
 
         dash: () => {

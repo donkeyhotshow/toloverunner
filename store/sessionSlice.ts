@@ -10,6 +10,7 @@ import { RUN_SPEED_BASE, GAMEPLAY_CONFIG, INITIAL_LIVES } from '../constants';
 import { unifiedAudio } from '../core/audio/UnifiedAudioManager';
 import { debugLog } from '../utils/debug';
 import { safeClamp, safeNumber } from '../utils/safeMath';
+import { computeEffectiveSpeed } from './gameplay/speedActions';
 
 export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> = (set, get) => {
     const initialSeed = Math.random().toString(36).substring(2, 15);
@@ -69,6 +70,8 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 score: 0,
                 lives: maxLives,
                 speed: RUN_SPEED_BASE,
+                baseSpeed: RUN_SPEED_BASE,   // reset progression speed
+                slowEffects: [],              // clear all slow effects
                 distance: 0,
                 sessionStartTime: Date.now(),
                 timePlayed: 0,
@@ -85,6 +88,7 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 speedBoostActive: false,
                 speedBoostTimer: 0,
                 lastCollectTime: 0,
+                lastGrazeTime: 0,
                 perfectTimingBonus: 0,
                 combo: 0,
                 multiplier: 1,
@@ -134,20 +138,24 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
             set((state) => {
                 const now = performance.now();
                 const lastTimestamp = state.lastTimestamp || now;
-                const dt = (now - lastTimestamp) / 1000;
+                // Cap dt at 100 ms to prevent runaway progression after tab-switch or GC pause
+                const dt = Math.min((now - lastTimestamp) / 1000, 0.1);
                 const timePlayed = state.timePlayed + dt;
 
                 // SPERN RUNNER 2.2.0: Швидкість(t) = 10 м/с × (1 + 0.01 × t)
                 // t = 0 -> 10, t = 60 -> 16, t = 120 -> 22
-                const targetSpeed = RUN_SPEED_BASE * (1 + 0.01 * timePlayed);
+                const targetBaseSpeed = RUN_SPEED_BASE * (1 + 0.01 * timePlayed);
 
-                // Smoothly interpolate current speed to target
-                const newSpeed = state.speed + (targetSpeed - state.speed) * 0.05;
-                const clampedSpeed = safeClamp(newSpeed, GAMEPLAY_CONFIG.MIN_SPEED, GAMEPLAY_CONFIG.MAX_SPEED, state.speed);
+                // Smoothly lerp baseSpeed toward target (progression-only, no powerup modifiers)
+                const newBaseSpeed = safeClamp(
+                    state.baseSpeed + (targetBaseSpeed - state.baseSpeed) * 0.05,
+                    GAMEPLAY_CONFIG.MIN_SPEED,
+                    GAMEPLAY_CONFIG.MAX_SPEED,
+                    state.baseSpeed
+                );
 
-                // SPERN RUNNER 2.2.0: x2 multiplier after ~90 seconds
+                // SPERN RUNNER 2.2.0: x2 score multiplier after ~90 seconds
                 const timeMultiplier = timePlayed >= 90 ? 2 : 1;
-                // Add points: base points from distance + any active multipliers
                 const earnedPoints = safeDelta * timeMultiplier;
 
                 const progress = Math.min(1.0, (state.distance + safeDelta) / 5000);
@@ -156,10 +164,13 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 const spawnRate = 1 + expProgress * 2.0;
                 const obstacleDensity = 0.25 + (obstacleCurve * 0.55);
                 const difficultyMultiplier = (spawnRate + obstacleDensity) / 2;
+
                 return {
                     distance: safeClamp(state.distance + safeDelta, 0, Number.MAX_SAFE_INTEGER, state.distance),
                     score: safeClamp(state.score + Math.floor(earnedPoints), 0, GAMEPLAY_CONFIG.MAX_SCORE, state.score),
-                    speed: clampedSpeed,
+                    baseSpeed: newBaseSpeed,
+                    // Recompute derived speed, preserving any active powerup modifiers
+                    speed: computeEffectiveSpeed(newBaseSpeed, state.speedBoostActive, state.slowEffects),
                     timePlayed,
                     lastTimestamp: now,
                     difficultyMultiplier
@@ -170,8 +181,9 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
         setDistance: (dist) => set((s) => ({ distance: safeClamp(safeNumber(dist, 0), 0, Number.MAX_SAFE_INTEGER, s.distance) })),
 
         updateGameTimer: (dt) => {
+            // Momentum decays toward 0 over time, clamped to [0, 2.0]
             set(s => ({
-                momentum: safeClamp(s.momentum - dt * 0.05, 1.0, Number.MAX_SAFE_INTEGER, 1.0)
+                momentum: safeClamp(s.momentum - dt * 0.05, 0, 2.0, 1.0)
             }));
         },
 

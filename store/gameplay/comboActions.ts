@@ -19,12 +19,13 @@ export function createComboActions(set: Set, get: Get) {
         graze: () => {
             const now = performance.now();
             const state = get();
-            if (now - state.lastCollectTime < 100) return;
+            // Use a separate graze timer so coin collection doesn't suppress graze scoring
+            if (now - state.lastGrazeTime < 100) return;
 
             set(s => ({
                 score: safeClamp(s.score + 50, 0, GAMEPLAY_CONFIG.MAX_SCORE, s.score),
                 combo: safeClamp(s.combo + 1, 0, Number.MAX_SAFE_INTEGER, s.combo),
-                lastCollectTime: now,
+                lastGrazeTime: now,
                 momentum: Math.min(2.0, s.momentum + 0.05)
             }));
             eventBus.emit('player:graze', { distance: state.distance });

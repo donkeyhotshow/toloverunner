@@ -109,6 +109,8 @@ export interface GameplaySlice {
   multiplier: number;
   maxCombo: number;
   lastCollectTime: number;
+  /** Separate dedup timer for graze scoring (independent from coin collection). */
+  lastGrazeTime: number;
   perfectTimingBonus: number;
 
   // Combat System v2.4.0
@@ -136,6 +138,19 @@ export interface GameplaySlice {
   isSpeedBoostActive: boolean; // Visual flag
   isImmortalityActive: boolean; // Visual flag
 
+  /**
+   * Progression-driven speed without any powerup modifiers.
+   * slowDown() and activateSpeedBoost() derive `speed` from this value
+   * so that boosts/slows never permanently corrupt the progression curve.
+   */
+  baseSpeed: number;
+  /**
+   * Active slow effects from environmental hazards (e.g. immune-cell slow).
+   * Each entry expires at a wall-clock timestamp (performance.now()).
+   * `updateSlowEffects()` removes expired entries and recomputes `speed`.
+   */
+  slowEffects: ReadonlyArray<{ factor: number; expiresAt: number }>;
+
   // === DNA CARD COLLECTION v2.4.0 ===
   dnaCards: Array<{
     id: string;
@@ -153,6 +168,8 @@ export interface GameplaySlice {
   graze: () => void;
   takeDamage: (obj?: { type?: string | number }) => void;
   slowDown: (factor?: number, duration?: number) => void;
+  /** Remove expired slow effects and recompute speed. Call once per game tick. */
+  updateSlowEffects: () => void;
   bacteriaJumpBonus: () => void;
   jump: () => void;
   stopJump: () => void;

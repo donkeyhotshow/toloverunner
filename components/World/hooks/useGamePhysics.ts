@@ -28,7 +28,7 @@ export const useGamePhysics = () => {
     const fearWasCloseRef = useRef(false);
 
     useEffect(() => {
-        // Listen for jump input from store
+        // Listen for jump input via eventBus (single event system — no window events)
         const handleJumpInput = () => {
             physicsEngine.jump();
         };
@@ -37,13 +37,13 @@ export const useGamePhysics = () => {
             physicsEngine.stopJump();
         };
 
-        window.addEventListener('player:jump_input', handleJumpInput);
-        window.addEventListener('player:stop_jump', handleStopJump);
+        const unsubJump = eventBus.on('player:jump_input', handleJumpInput);
+        const unsubStop = eventBus.on('player:stop_jump', handleStopJump);
 
         return () => {
             physicsEngine.dispose();
-            window.removeEventListener('player:jump_input', handleJumpInput);
-            window.removeEventListener('player:stop_jump', handleStopJump);
+            unsubJump();
+            unsubStop();
         };
     }, [physicsEngine]);
 
