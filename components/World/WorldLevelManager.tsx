@@ -221,8 +221,8 @@ export const WorldLevelManager: React.FC = React.memo(() => {
 
     return (
         <group name="WorldLevel">
-            {/* 3. Infinite Track System */}
-            <BioInfiniteTrack playerZ={0} />
+            {/* 3. Infinite Track System — pass live speed so UV scroll matches physics */}
+            <BioInfiniteTrack playerZ={0} speed={speed} />
 
             {/* 🛡️ DECORATION (New Biome Decor) */}
             <BiomeDecorRenderer biome={biome} totalDistanceRef={totalDistanceRef} />

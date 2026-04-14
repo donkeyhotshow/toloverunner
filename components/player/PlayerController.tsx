@@ -21,12 +21,18 @@ interface PlayerControllerProps {
 const BOB_AMPLITUDE = 0.02;
 const BOB_SPEED = 1.8;
 const BASE_Y = 0.5;
+// Visual height gain at peak of jump (world units). Smoothly lerped for polish.
+const JUMP_VISUAL_LIFT = 1.4;
+// Lerp factor for jump lift animation (higher = snappier)
+const LIFT_LERP_SPEED = 0.14;
 
 export const PlayerController: React.FC<PlayerControllerProps> = ({
   visible = true,
   speed = 1.0,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
+  // Current animated visual lift (smoothly driven toward target each frame)
+  const liftRef = useRef(0);
 
   // isJumping for ToonSperm squash & stretch (React render, not useFrame)
   const isJumping = useStore(s => s.localPlayerState.isJumping);
@@ -41,11 +47,15 @@ export const PlayerController: React.FC<PlayerControllerProps> = ({
 
     groupRef.current.position.x = state.position[0];
 
+    // Smoothly animate a visual Y lift for jump feel (Subway Surfers style)
+    const targetLift = jumping ? JUMP_VISUAL_LIFT : 0;
+    liftRef.current += (targetLift - liftRef.current) * LIFT_LERP_SPEED;
+
     const bob = jumping
       ? 0
       : Math.sin(clock.elapsedTime * BOB_SPEED) * BOB_AMPLITUDE;
 
-    groupRef.current.position.y = BASE_Y + bob;
+    groupRef.current.position.y = BASE_Y + liftRef.current + bob;
     // Z stays at 0 - world moves, player stays centered
   });
 

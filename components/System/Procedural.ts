@@ -131,13 +131,16 @@ export class ProceduralSystem {
         return available[idx] ?? null;
     }
 
-    requestChunk(startZ: number, _count: number, laneCount: number, _biome: BiomeType) {
-        // We ignore 'count' as a rigid fixed amount, and instead generate enough patterns to fill the requested space
-        // Typically 'count' was passed as length in previous logic? Or usage?
-        // Actually WorldLevelManager mostly cares about total distance coverage.
-        // Let's assume this call wants a "Batch" of objects.
+    requestChunk(startZ: number, count: number, laneCount: number, _biome: BiomeType) {
+        // Each logical "chunk" is CHUNK_UNIT_SIZE world-units long.
+        // count is the number of chunks requested by the caller (e.g. 45 on first load, 15 on refill).
+        // We generate content to cover count × CHUNK_UNIT_SIZE world units.
+        const CHUNK_UNIT_SIZE = 20; // matches TrackSystem.CHUNK_SIZE
+        const BATCH_LENGTH = Math.max(100, count * CHUNK_UNIT_SIZE);
 
-        const maxFloats = 200 * 7; // type, x, y, z, color, height, width
+        // Buffer: up to 400 objects (generous cap to avoid per-frame overflow on large batches)
+        const MAX_OBJECTS = 400;
+        const maxFloats = MAX_OBJECTS * 7; // type, x, y, z, color, height, width
         const buffer = new Float32Array(maxFloats);
         let offset = 0;
 
@@ -152,9 +155,8 @@ export class ProceduralSystem {
             buffer[offset++] = width;
         };
 
-        // Current generation pointer within this batch (целочисленные шаги для стабильности)
-        const BATCH_LENGTH = 100;
-        let currentZ = Math.round(startZ / 2) * 2; // выравнивание по 2 для стабильности
+        // Current generation pointer within this batch (integer steps for stability)
+        let currentZ = Math.round(startZ / 2) * 2; // snap to 2-unit grid for stability
         const targetZ = currentZ - BATCH_LENGTH;
 
         // Keep adding patterns until we cover the batch length

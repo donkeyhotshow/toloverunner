@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useStore } from '../../store';
+import { eventBus } from '../../utils/eventBus';
 
 /**
  * ParallaxTunnel — Background tunnel with UV-scroll (no mesh movement)
@@ -96,14 +97,10 @@ export const ParallaxTunnel: React.FC<{ totalDistance?: number }> = ({ totalDist
 
   // Listen for floating origin resets — accumulate scroll offset
   useEffect(() => {
-    const unsub = (window as unknown as { __eventBus__?: { on: (e: string, h: (d: unknown) => void) => () => void } }).__eventBus__?.on?.(
-      'world:origin-reset',
-      (data: unknown) => {
-        const { offset } = data as { offset: number };
-        scrollAccumRef.current += offset;
-      }
-    );
-    return unsub;
+    const handler = (data: { offset: number }) => {
+      scrollAccumRef.current += data.offset;
+    };
+    return eventBus.on('world:origin-reset', handler);
   }, []);
 
   useFrame(({ clock }) => {

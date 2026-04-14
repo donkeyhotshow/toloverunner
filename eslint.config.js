@@ -22,6 +22,7 @@ export default [
             },
             globals: {
                 ...globals.browser,
+                __DEBUG__: 'readonly', // Defined by Vite in vite.config.ts define block
             }
         },
         plugins: {
