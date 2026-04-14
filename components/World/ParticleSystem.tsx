@@ -16,6 +16,7 @@ import { scheduleMatrixUpdate, scheduleColorUpdate } from '../System/InstanceUpd
 import { registerGameLoopCallback, unregisterGameLoopCallback } from '../System/GameLoopRegistry';
 import { getGeometryPool } from '../../infrastructure/rendering/GeometryPool';
 import { safeDispose } from '../../utils/errorHandler';
+import { eventBus } from '../../utils/eventBus';
 
 const shouldDisableParticles = () => {
   try {
@@ -29,15 +30,6 @@ const shouldDisableParticles = () => {
 
 const COUNT = Math.min(80, SAFETY_CONFIG.MAX_PARTICLES); // Increased to support 40+ burst count
 const GRAVITY = -18;
-
-interface ParticleBurstEvent extends CustomEvent {
-  detail: {
-    position: [number, number, number];
-    color?: string;
-    type: 'hit' | 'powerup' | 'dust' | 'combat-kill';
-    count?: number;
-  };
-}
 
 interface Particle {
   active: boolean;
@@ -92,9 +84,8 @@ export const ParticleSystem: React.FC = () => {
   }, [particleTexture]);
 
   useEffect(() => {
-    const handleBurst = (e: Event) => {
-      const burstEvent = e as ParticleBurstEvent;
-      const { position, color, type, count = 12 } = burstEvent.detail;
+    // Subscribe via eventBus — single event system, no window events
+    const unsubBurst = eventBus.on('particle:burst', ({ position, color, type, count = 12 }) => {
       if (type === 'dust') return; // Disable smoke/dust effect
       const [px, py, pz] = position || [0, 0, 0];
 
@@ -109,12 +100,11 @@ export const ParticleSystem: React.FC = () => {
         p.pos.set(px, py, pz);
         p.color.set(color || 'white');
 
-        // Упрощенная логика частиц - единый тип для всех
-        const speed = type === 'hit' ? 6 : type === 'combat-kill' ? 12 : type === 'powerup' ? 3 : 2;
+        const spd = type === 'hit' ? 6 : type === 'combat-kill' ? 12 : type === 'powerup' ? 3 : 2;
         p.vel.set(
-          (Math.random() - 0.5) * speed,
-          (type === 'dust' as any) ? 0.5 + Math.random() : (Math.random() - 0.5) * (speed * 0.8),
-          (Math.random() - 0.5) * speed
+          (Math.random() - 0.5) * spd,
+          (Math.random() - 0.5) * (spd * 0.8),
+          (Math.random() - 0.5) * spd
         );
         p.maxLife = type === 'hit' ? 0.5 : type === 'combat-kill' ? 0.4 : type === 'powerup' ? 0.6 : 0.4;
         p.scale = type === 'combat-kill' ? 0.6 + Math.random() * 0.5 : 0.5 + Math.random() * 0.3;
@@ -122,10 +112,9 @@ export const ParticleSystem: React.FC = () => {
 
         spawned++;
       }
-    };
+    });
 
-    window.addEventListener('particle-burst', handleBurst);
-    return () => window.removeEventListener('particle-burst', handleBurst);
+    return () => unsubBurst();
   }, []);
 
   const planeGeo = useMemo(() => getGeometryPool().getPlaneGeometry(0.35, 0.35), []);

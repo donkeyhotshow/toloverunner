@@ -18,6 +18,10 @@ type GameEvents = {
     'player:membrane_pop': void;
     // Player wasted/death variant (used by ComicPopupSystem for SPLAT! effect)
     'player:wasted': void;
+    // Near-miss with a dangerous enemy
+    'player:fear': void;
+    // Perfect-timing coin collection bonus
+    'player:perfect': { bonus: number };
 
     // World/Level events
     'world:chunk-generated': { id: string; type: string };
@@ -58,6 +62,14 @@ type GameEvents = {
     // DNA events
     'dna_card_collected': { cardId: string; rarity: string };
     'dna:synergy_update': { synergies: string[]; combos?: string[]; totalCards?: number };
+
+    // Particle effects
+    'particle:burst': {
+        position: [number, number, number];
+        color?: string;
+        type: 'hit' | 'powerup' | 'dust' | 'combat-kill';
+        count?: number;
+    };
 };
 
 type Handler<T> = (data: T) => void;

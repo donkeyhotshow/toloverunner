@@ -35,7 +35,7 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
                     isImmortalityActive: speedBoostActive
                 });
                 eventBus.emit('player:membrane_pop', undefined as void);
-                window.dispatchEvent(new CustomEvent('play-sound', { detail: { sound: 'membrane_pop', volume: 0.8 } }));
+                eventBus.emit('system:play-sound', { sound: 'membrane_pop', volume: 0.8 });
                 return;
             }
 

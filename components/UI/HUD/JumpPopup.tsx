@@ -1,35 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../../store';
 import { GameStatus } from '../../../types';
+import { eventBus } from '../../../utils/eventBus';
+
 export const JumpPopup: React.FC = () => {
     const [show, setShow] = useState(false);
     const status = useStore(s => s.status);
 
     useEffect(() => {
-        const handleJump = () => {
+        const unsub = eventBus.on('player:jump', () => {
             if (status === GameStatus.PLAYING) {
                 setShow(true);
                 setTimeout(() => setShow(false), 800);
             }
-        };
-
-        const onParticleBurst = (e: Event) => {
-            if ((e as CustomEvent<{ type?: string }>)?.detail?.type === 'jump') {
-                handleJump();
-            }
-        };
-
-        window.addEventListener('particle-burst', onParticleBurst);
-
-        return () => {
-            window.removeEventListener('particle-burst', onParticleBurst);
-        };
+        });
+        return () => unsub();
     }, [status]);
 
     const zenMode = useStore(s => s.zenMode);
 
     if (!show || zenMode) return null;
-
 
     return (
         <>

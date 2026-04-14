@@ -125,14 +125,12 @@ export const useGamePhysics = () => {
                             const destroyed = combat.destroyEnemy(obj);
                             if (destroyed) {
                                 // Visual burst for combat kill
-                                window.dispatchEvent(new CustomEvent('particle-burst', {
-                                    detail: {
+                                eventBus.emit('particle:burst', {
                                         position: [obj.position[0], obj.position[1], objRelZ],
                                         color: '#FFFFFF',
                                         type: 'combat-kill',
                                         count: 30
-                                    }
-                                }));
+                                    });
                                 continue;
                             }
                         }
@@ -362,24 +360,20 @@ export const useGamePhysics = () => {
                         detail: { position: [pos.x, pos.y, pos.z] }
                     }));
 
-                    window.dispatchEvent(new CustomEvent('particle-burst', {
-                        detail: {
+                    eventBus.emit('particle:burst', {
                             position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
                             color: '#FF4444',
                             type: 'hit',
                             count: 40
-                        }
-                    }));
+                        });
                 } else {
                     // Блок щитом/бессмертием: мягкий эффект без удара по игроку
-                    window.dispatchEvent(new CustomEvent('particle-burst', {
-                        detail: {
+                    eventBus.emit('particle:burst', {
                             position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
                             color: '#66CCFF',
-                            type: 'shield-block',
+                            type: 'powerup',
                             count: 20
-                        }
-                    }));
+                        });
                     window.dispatchEvent(new CustomEvent('play-sound', {
                         detail: { sound: 'shield', volume: 0.9 }
                     }));
@@ -394,14 +388,12 @@ export const useGamePhysics = () => {
                 obj.collecting = 0.35;
 
                 const isValuable = (obj.type === ObjectType.GENE || obj.type === ObjectType.DNA_HELIX);
-                window.dispatchEvent(new CustomEvent('particle-burst', {
-                    detail: {
+                eventBus.emit('particle:burst', {
                         position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
                         color: isValuable ? '#00FFFF' : '#FFD700',
                         type: 'powerup',
                         count: isValuable ? 20 : 10
-                    }
-                }));
+                    });
 
                 // Batch all collection events
                 if (isValuable) {
@@ -421,14 +413,12 @@ export const useGamePhysics = () => {
                         detail: { element: 'score', intensity: 1.2 }
                     }));
                     // ✨ Visual Feedback: Turquoise Burst for Rings
-                    window.dispatchEvent(new CustomEvent('particle-burst', {
-                        detail: {
+                    eventBus.emit('particle:burst', {
                             position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
                             color: '#40E0D0',
                             type: 'powerup',
                             count: 15
-                        }
-                    }));
+                        });
                 } else if (obj.type === ObjectType.SHIELD) {
                     store.activateShield();
                     window.dispatchEvent(new CustomEvent('play-sound', {

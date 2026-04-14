@@ -1,6 +1,8 @@
 /**
- * FixedPositionFollow - CRITICAL FIX
- * Uses projection mathematics to guarantee player stays at fixed screen position
+ * CameraController
+ * Uses projection mathematics to guarantee player stays at fixed screen position.
+ * Subscribes to game events via eventBus only (no window events).
+ * FOV dynamically reacts to gameplay speed for sense of velocity.
  */
 
 import React, { useRef, useEffect } from 'react';
@@ -11,6 +13,8 @@ import { GameStatus } from '../../types';
 import { registerGameLoopCallback, unregisterGameLoopCallback } from '../System/GameLoopRegistry';
 import { getPhysicsStabilizer } from '../../core/physics/PhysicsStabilizer';
 import { useCameraShake } from '../../store/cameraShakeStore';
+import { eventBus } from '../../utils/eventBus';
+import { GAMEPLAY_CONFIG, RUN_SPEED_BASE } from '../../constants';
 
 // FIXED POSITION CAMERA CONFIGURATION
 const CAMERA_CONFIG = {
@@ -27,15 +31,15 @@ const CAMERA_CONFIG = {
   HEIGHT_OFFSET: 3.0,
   BOOST_HEIGHT_OFFSET: 4.0,
 
-  // FOV settings
-  BASE_FOV: 60,   // 🎨 Requested start
-  MAX_FOV: 85,    // 🎨 Requested max
-  DASH_FOV: 95,   // 🎨 Specific request: 95 degrees
-  BOOST_FOV: 85,  // Same as max speed
+  // FOV settings — dynamically lerped based on speed
+  BASE_FOV: 60,   // FOV at minimum speed
+  MAX_FOV: 82,    // FOV at maximum speed
+  DASH_FOV: 95,   // FOV during dash
+  BOOST_FOV: 85,  // FOV during speed boost
 
   // Smoothing
   POSITION_LERP: 8.0,
-  FOV_LERP: 6.0,
+  FOV_LERP: 4.0,
 
   // Look-ahead distance
   LOOK_AHEAD: 5.0
@@ -64,46 +68,41 @@ const CameraController: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleHit = () => {
+    // Subscribe via eventBus — single event system, no window events
+    const unsubHit = eventBus.on('player:hit', () => {
       useCameraShake.getState().shake(1.2, 0.6);
       impactLag.current = 1.0;
-    };
-    const handleGraze = () => {
+    });
+    const unsubGraze = eventBus.on('player:graze', () => {
       useCameraShake.getState().shake(0.2, 0.2);
-    };
-    const handleFear = () => {
-      // Subtle micro-jitter when a dangerous enemy enters FEAR_DISTANCE
+    });
+    const unsubFear = eventBus.on('player:fear', () => {
       useCameraShake.getState().shake(0.15, 0.15);
-      targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.05; // ~3 degrees, barely perceptible
-      dutchResetTimerA.current = 0.15; // 150 ms to reset (shorter than combat tilt)
-    };
-    const handleCombatAction = () => {
-      // 📸 Dutch Angle on attack — reset is handled via dutchResetTimerA in game loop
-      targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.15; // ~8.5 degrees
-      dutchResetTimerA.current = 0.2; // 200 ms, decremented in game loop callback
-    };
-    const handleComboMilestone = () => {
-      // Stronger tilt on milestone — reset is handled via dutchResetTimerB in game loop
-      targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.25; // ~14 degrees
+      targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.05;
+      dutchResetTimerA.current = 0.15;
+    });
+    const unsubAttackUp = eventBus.on('combat:attack_up', () => {
+      targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.15;
+      dutchResetTimerA.current = 0.2;
+    });
+    const unsubAttackDown = eventBus.on('combat:attack_down', () => {
+      targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.15;
+      dutchResetTimerA.current = 0.2;
+    });
+    const unsubCombo = eventBus.on('combat:combo_milestone', () => {
+      targetDutchTilt.current = (Math.random() > 0.5 ? 1 : -1) * 0.25;
       useCameraShake.getState().shake(0.5, 0.3);
-      dutchResetTimerB.current = 0.4; // 400 ms, decremented in game loop callback
-    };
-
-    window.addEventListener('player-hit', handleHit);
-    window.addEventListener('player-graze', handleGraze);
-    window.addEventListener('player:fear', handleFear);
-    window.addEventListener('combat:attack_up', handleCombatAction);
-    window.addEventListener('combat:attack_down', handleCombatAction);
-    window.addEventListener('combat:combo_milestone', handleComboMilestone);
+      dutchResetTimerB.current = 0.4;
+    });
 
     return () => {
-      window.removeEventListener('player-hit', handleHit);
-      window.removeEventListener('player-graze', handleGraze);
-      window.removeEventListener('player:fear', handleFear);
-      window.removeEventListener('combat:attack_up', handleCombatAction);
-      window.removeEventListener('combat:attack_down', handleCombatAction);
-      window.removeEventListener('combat:combo_milestone', handleComboMilestone);
-    }
+      unsubHit();
+      unsubGraze();
+      unsubFear();
+      unsubAttackUp();
+      unsubAttackDown();
+      unsubCombo();
+    };
   }, []);
 
   useEffect(() => {
@@ -159,22 +158,40 @@ const CameraController: React.FC = () => {
       }
       const playerPos = playerPosRef.current;
 
-      // 🎥 STRICT CAMERA: Static distance and FOV, no dynamic momentum changing
-      let targetDistance = CAMERA_CONFIG.BASE_DISTANCE;
-      let targetHeightOffset = CAMERA_CONFIG.HEIGHT_OFFSET;
-      let targetFOV = CAMERA_CONFIG.BASE_FOV;
+      const gameState = useStore.getState();
+      const targetDistance = CAMERA_CONFIG.BASE_DISTANCE;
+      const targetHeightOffset = CAMERA_CONFIG.HEIGHT_OFFSET;
+
+      // ── Speed-driven FOV: maps speed progression to BASE_FOV..MAX_FOV ──
+      let targetFOV: number;
+      if (gameState.isDashing) {
+        targetFOV = CAMERA_CONFIG.DASH_FOV;
+      } else if (gameState.speedBoostActive) {
+        targetFOV = CAMERA_CONFIG.BOOST_FOV;
+      } else {
+        const speedRange = Math.max(1, GAMEPLAY_CONFIG.MAX_SPEED - RUN_SPEED_BASE);
+        const speedT = Math.min(1, Math.max(0, (gameState.speed - RUN_SPEED_BASE) / speedRange));
+        targetFOV = CAMERA_CONFIG.BASE_FOV + speedT * (CAMERA_CONFIG.MAX_FOV - CAMERA_CONFIG.BASE_FOV);
+      }
 
       calculateCameraPosition(playerPos, targetDistance, targetHeightOffset);
 
-      // PERFECT LOCK: Extremely high lerp speed virtually locks camera to target Pos
-      const currentLerp = 25.0; // Instant follow
-      currentPos.current.lerp(targetPos.current, delta * currentLerp);
+      // Smooth follow — high lerp speed for near-instant follow
+      currentPos.current.lerp(targetPos.current, delta * 25.0);
 
-      // STRICT CAMERA: No shake - rigid translation only
-      shakeDirection.current.set(0, 0, 0);
+      // Apply camera shake offset (zero when no shake active)
+      const shakeMag = useCameraShake.getState().update(delta);
+      if (shakeMag > 0) {
+        shakeDirection.current.set(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2,
+          0
+        ).normalize().multiplyScalar(shakeMag * 0.3);
+      } else {
+        shakeDirection.current.set(0, 0, 0);
+      }
 
-      // Disable shake entirely for strict style
-      camera.position.copy(currentPos.current);
+      camera.position.copy(currentPos.current).add(shakeDirection.current);
 
       const perspectiveCamera = camera as PerspectiveCamera;
       if (perspectiveCamera.isPerspectiveCamera) {
@@ -186,14 +203,14 @@ const CameraController: React.FC = () => {
         perspectiveCamera.updateProjectionMatrix();
       }
 
-      // 🎥 STRICT FRAMING: Directly align behind
+      // Look slightly ahead of the player, with dutch tilt applied
       lookAtTarget.current.set(
-        playerPos.x, // Dead center on X
-        playerPos.y + 1.0, // Look slightly above ground level
+        playerPos.x,
+        playerPos.y + 1.0,
         playerPos.z - CAMERA_CONFIG.LOOK_AHEAD
       );
-
       camera.lookAt(lookAtTarget.current);
+      camera.rotation.z += dutchTilt.current;
     };
 
     registerGameLoopCallback('lateUpdate', updateCamera);

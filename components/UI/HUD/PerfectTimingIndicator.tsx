@@ -3,6 +3,7 @@ import { useStore } from '../../../store';
 import type { GameState } from '../../../store/storeTypes';
 import { ComicPanel } from '../System/ComicPanel';
 import { ComicText } from '../System/ComicText';
+import { eventBus } from '../../../utils/eventBus';
 
 // Selectors
 const selectPerfectTimingBonus = (state: GameState) => state.perfectTimingBonus;
@@ -21,14 +22,12 @@ export const PerfectTimingIndicator: React.FC = () => {
                 setDisplayBonus(perfectTimingBonus);
                 setIsVisible(true);
             }, 0);
-            window.dispatchEvent(new CustomEvent('particle-burst', {
-                detail: {
-                    position: [0, 3, 0],
-                    color: '#FFD700',
-                    type: 'powerup',
-                    count: 40
-                }
-            }));
+            eventBus.emit('particle:burst', {
+                position: [0, 3, 0],
+                color: '#FFD700',
+                type: 'powerup',
+                count: 40
+            });
             const t = setTimeout(() => setIsVisible(false), 2500);
             return () => {
                 clearTimeout(id);

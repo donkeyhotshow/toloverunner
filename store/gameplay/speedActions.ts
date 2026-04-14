@@ -158,7 +158,7 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
             eventBus.emit('player:collect', { type: 'coin', points: finalPoints, color: perfectTiming ? '#FFD700' : '#ffffff' });
 
             if (perfectTiming) {
-                window.dispatchEvent(new CustomEvent('perfect-timing', { detail: { bonus } }));
+                eventBus.emit('player:perfect', { bonus });
             }
         },
 

@@ -9,17 +9,24 @@ import {
   Group,
   BackSide,
 } from 'three';
+import type { AnimState } from './PlayerController';
 
 export interface ToonSpermProps {
   speed?: number;
   scale?: number;
   isJumping?: boolean;
+  /** Ref to current animation state (FSM), driven by physics. */
+  animState?: React.MutableRefObject<AnimState>;
+  /** Ref to landing squash intensity [0..1], decayed by PlayerController. */
+  landSquash?: React.MutableRefObject<number>;
 }
 
 export const ToonSperm: React.FC<ToonSpermProps> = ({
   speed = 1,
   scale = 1,
   isJumping = false,
+  animState,
+  landSquash,
 }) => {
   // Refs for animation targets
   const groupRef = useRef<Group>(null);
@@ -178,17 +185,35 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
       }
     }
 
-    // Squash & stretch on body (smooth lerp)
+    // Squash & stretch driven by animation FSM (physics-derived)
     if (bodyRef.current) {
-      if (isJumping) {
-        bodyRef.current.scale.y += (0.7 - bodyRef.current.scale.y) * 0.15;
-        bodyRef.current.scale.x += (1.3 - bodyRef.current.scale.x) * 0.15;
-        bodyRef.current.scale.z += (1.3 - bodyRef.current.scale.z) * 0.15;
+      const anim = animState?.current ?? (isJumping ? 'jump' : 'run');
+      const squeeze = landSquash?.current ?? 0;
+
+      let targetScaleY: number;
+      let targetScaleXZ: number;
+
+      if (anim === 'jump') {
+        // Stretch vertically on the way up
+        targetScaleY = 1.35;
+        targetScaleXZ = 0.75;
+      } else if (anim === 'fall') {
+        // Slight squash as falling speed builds
+        targetScaleY = 0.9;
+        targetScaleXZ = 1.1;
+      } else if (anim === 'land' && squeeze > 0) {
+        // Hard squash on landing, proportional to squash intensity
+        targetScaleY = 1.0 - squeeze * 0.45;   // 0.55 at peak
+        targetScaleXZ = 1.0 + squeeze * 0.50;  // 1.5 at peak
       } else {
-        bodyRef.current.scale.y += (1.0 - bodyRef.current.scale.y) * 0.1;
-        bodyRef.current.scale.x += (1.0 - bodyRef.current.scale.x) * 0.1;
-        bodyRef.current.scale.z += (1.0 - bodyRef.current.scale.z) * 0.1;
+        targetScaleY = 1.0;
+        targetScaleXZ = 1.0;
       }
+
+      const lerpFactor = anim === 'land' ? 0.25 : 0.12;
+      bodyRef.current.scale.y  += (targetScaleY  - bodyRef.current.scale.y)  * lerpFactor;
+      bodyRef.current.scale.x  += (targetScaleXZ - bodyRef.current.scale.x)  * lerpFactor;
+      bodyRef.current.scale.z  += (targetScaleXZ - bodyRef.current.scale.z)  * lerpFactor;
     }
 
     // Glow pulse
