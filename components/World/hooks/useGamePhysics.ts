@@ -286,7 +286,7 @@ export const useGamePhysics = () => {
         // GDD: emit player:fear on rising edge when a lethal enemy enters FEAR_DISTANCE (rate-limited)
         const enemyIsClose = nearestDist < PLAYER_PHYSICS.FEAR_DISTANCE;
         if (enemyIsClose && !fearWasCloseRef.current) {
-            window.dispatchEvent(new CustomEvent('player:fear', { detail: { distance: nearestDist } }));
+            eventBus.emit('player:fear', undefined);
         }
         fearWasCloseRef.current = enemyIsClose;
 
@@ -348,17 +348,11 @@ export const useGamePhysics = () => {
                     );
                     finalPlayer.applyRecoil(recoilDir);
 
-                    window.dispatchEvent(new CustomEvent('screen-shake', {
-                        detail: { intensity: 0.3, duration: 0.3 }
-                    }));
+                    eventBus.emit('system:screen-shake', { intensity: 0.3, duration: 0.3 });
 
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'enemy-hit', volume: 0.8 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'enemy-hit', volume: 0.8 });
 
-                    window.dispatchEvent(new CustomEvent('player-hit', {
-                        detail: { position: [pos.x, pos.y, pos.z] }
-                    }));
+                    eventBus.emit('player:hit-vfx', { position: [pos.x, pos.y, pos.z] });
 
                     eventBus.emit('particle:burst', {
                             position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
@@ -374,9 +368,7 @@ export const useGamePhysics = () => {
                             type: 'powerup',
                             count: 20
                         });
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'shield', volume: 0.9 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'shield', volume: 0.9 });
                 }
 
                 if (collision.jumpedOverObject && willTakeDamage) {
@@ -398,20 +390,12 @@ export const useGamePhysics = () => {
                 // Batch all collection events
                 if (isValuable) {
                     store.collectGene();
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'gene-collect', volume: 0.7 }
-                    }));
-                    window.dispatchEvent(new CustomEvent('hud-pulse', {
-                        detail: { element: 'score', intensity: 1.3 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'gene-collect', volume: 0.7 });
+                    eventBus.emit('ui:hud-pulse', { element: 'score', intensity: 1.3 });
                 } else if (obj.type === ObjectType.COIN) {
                     store.collectCoin(5); // GDD v2.2.0: 5 points per coin
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'coin-collect', volume: 0.6 }
-                    }));
-                    window.dispatchEvent(new CustomEvent('hud-pulse', {
-                        detail: { element: 'score', intensity: 1.2 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'coin-collect', volume: 0.6 });
+                    eventBus.emit('ui:hud-pulse', { element: 'score', intensity: 1.2 });
                     // ✨ Visual Feedback: Turquoise Burst for Rings
                     eventBus.emit('particle:burst', {
                             position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
@@ -421,24 +405,16 @@ export const useGamePhysics = () => {
                         });
                 } else if (obj.type === ObjectType.SHIELD) {
                     store.activateShield();
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'powerup-collect', volume: 0.7 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'powerup-collect', volume: 0.7 });
                 } else if (obj.type === ObjectType.SPEED_BOOST) {
                     store.activateSpeedBoost();
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'powerup-collect', volume: 0.7 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'powerup-collect', volume: 0.7 });
                 } else if (obj.type === ObjectType.MAGNET) {
                     store.activateMagnet();
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'powerup-collect', volume: 0.7 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'powerup-collect', volume: 0.7 });
                 }
 
-                window.dispatchEvent(new CustomEvent('player-collect-strong', {
-                    detail: { position: [pos.x, pos.y, pos.z] }
-                }));
+                eventBus.emit('player:collect-strong', { position: [pos.x, pos.y, pos.z] });
             }
         }
 

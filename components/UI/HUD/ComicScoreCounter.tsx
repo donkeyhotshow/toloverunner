@@ -7,29 +7,26 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useStore } from '../../../store';
 import { ComicPanel } from '../System/ComicPanel';
 import { ComicText } from '../System/ComicText';
+import { eventBus } from '../../../utils/eventBus';
 
 export const ComicScoreCounter: React.FC = () => {
     const score = useStore(s => s.score);
     const [isPulsing, setIsPulsing] = useState(false);
     const [pulseScale, setPulseScale] = useState(1.1); // Dynamic scale
     const [showScorePopup, setShowScorePopup] = useState(false);
-    const [scoreIncrement, setScoreIncrement] = useState(0); // Changed from ref to state
+    const [scoreIncrement, setScoreIncrement] = useState(0);
     const prevScore = useRef(score);
 
-    // 🎧 Listen for Physics Events (Juice)
+    // Listen for HUD pulse events via eventBus (single event system)
     useEffect(() => {
-        const handlePulse = (e: Event) => {
-            const detail = (e as CustomEvent<{ element?: string; intensity?: number }>).detail;
-            if (detail?.element === 'score') {
-                const intensity = detail.intensity ?? 1.1;
-                setPulseScale(intensity);
+        const unsub = eventBus.on('ui:hud-pulse', ({ element, intensity }) => {
+            if (element === 'score') {
+                setPulseScale(intensity ?? 1.1);
                 setIsPulsing(true);
-                setTimeout(() => setIsPulsing(false), 200); // Quick bounce
+                setTimeout(() => setIsPulsing(false), 200);
             }
-        };
-
-        window.addEventListener('hud-pulse', handlePulse);
-        return () => window.removeEventListener('hud-pulse', handlePulse);
+        });
+        return () => unsub();
     }, []);
 
     // 🔢 Score Change Logic (Text Popup only)

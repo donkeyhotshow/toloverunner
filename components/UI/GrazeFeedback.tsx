@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { UI_LAYERS } from '../../constants';
+import { eventBus } from '../../utils/eventBus';
 
 export const GrazeFeedback: React.FC = () => {
     const [messages, setMessages] = useState<{ id: number; x: number; y: number }[]>([]);
@@ -7,11 +8,11 @@ export const GrazeFeedback: React.FC = () => {
 
     useEffect(() => {
         const timeoutsSnapshot = timeoutsRef.current;
-        const handleGraze = () => {
+        const unsub = eventBus.on('player:graze', () => {
             const id = Date.now();
             const newMessage = {
                 id,
-                x: 40 + Math.random() * 20, // Randomish position around center
+                x: 40 + Math.random() * 20,
                 y: 40 + Math.random() * 20
             };
             setMessages(prev => [...prev.slice(-3), newMessage]);
@@ -22,12 +23,10 @@ export const GrazeFeedback: React.FC = () => {
             }, 800);
 
             timeoutsRef.current.add(timeout);
-        };
-
-        window.addEventListener('player-graze', handleGraze);
+        });
 
         return () => {
-            window.removeEventListener('player-graze', handleGraze);
+            unsub();
             timeoutsSnapshot.forEach(timeout => clearTimeout(timeout));
             timeoutsSnapshot.clear();
         };

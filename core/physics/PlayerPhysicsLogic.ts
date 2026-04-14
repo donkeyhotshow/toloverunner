@@ -10,6 +10,7 @@ import { GRAVITY_Y, JUMP_FORCE_Y, DOUBLE_JUMP_FORCE } from '../../constants/phys
 import { safeDeltaTime } from '../../utils/safeMath';
 import { validateLane } from '../../utils/laneUtils';
 import { logger } from '../../utils/logger';
+import { eventBus } from '../../utils/eventBus';
 
 /**
  * Система физики игрока (СТАБИЛИЗИРОВАННАЯ ВЕРСИЯ)
@@ -279,12 +280,7 @@ export class PlayerPhysics {
                 this.slideTimer = 0;
                 // Reset recoil on landing to prevent accumulated knockback
                 this.recoilVelocity.set(0, 0, 0);
-                if (typeof window !== 'undefined') {
-                    // FIXED: Add squash animation on landing
-                    window.dispatchEvent(new CustomEvent('player-landed', {
-                        detail: { squashIntensity: Math.abs(this.velocity.y) / 20 }
-                    }));
-                }
+                eventBus.emit('player:landed', { squashIntensity: Math.abs(this.velocity.y) / 20 });
             }
         } else {
             this.isGrounded = false;

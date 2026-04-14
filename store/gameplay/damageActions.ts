@@ -92,6 +92,9 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
                 });
 
                 eventBus.emit('player:dash', { chain: newChain });
+                if (newChain > 1) {
+                    eventBus.emit('player:dash-chain', undefined);
+                }
 
                 const t1 = setTimeout(() => set({ isDashing: false }), 400);
                 const t2 = setTimeout(() => set({ isInvincible: false }), 600);

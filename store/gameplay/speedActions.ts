@@ -102,6 +102,7 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
                 isImmortalityActive: true,
                 speed: computeEffectiveSpeed(s.baseSpeed, true, s.slowEffects),
             }));
+            eventBus.emit('player:boost', undefined);
         },
 
         updateSpeedBoostTimer: (delta: number) => {
