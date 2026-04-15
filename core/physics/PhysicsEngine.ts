@@ -16,28 +16,39 @@ export interface PhysicsEngineOptions {
 }
 
 export class PhysicsEngine {
-    private collisionObj: CollisionSystem;
     private playerPhysics: PlayerPhysics;
 
     constructor(_options?: PhysicsEngineOptions) {
         this.playerPhysics = new PlayerPhysics();
-        this.collisionObj = new CollisionSystem();
     }
 
     /**
-     * Упрощенное обновление физики
-     * Теперь просто передаем весь массив объектов
+     * Physics update with CCD-based collision detection.
+     * Uses sweep-based collision (checkWithCCD) to prevent tunneling at high speeds.
      */
     update(dt: number, gameObjects: GameObject[], currentDistance: number, moveDist: number, _incremental: boolean = false, isDashing: boolean = false) {
-        // 1) Обновляем физику игрока
+        // 1) Save previous position for CCD sweep
+        const prevX = this.playerPhysics.previousPosition.x;
+        const prevY = this.playerPhysics.previousPosition.y;
+
+        // 2) Update player physics (sets this.playerPhysics.position)
         this.playerPhysics.update(dt);
 
-        // 2) Простая проверка коллизий (без spatial hash)
         const px = this.playerPhysics.position.x;
         const py = this.playerPhysics.position.y;
-
         const previousDistance = currentDistance - moveDist;
-        return this.collisionObj.checkSimple(px, py, gameObjects, currentDistance, previousDistance, isDashing, this.playerPhysics.isSliding);
+
+        // 3) CCD sweep — prevents pass-through at MAX_SPEED (45 u/s)
+        return CollisionSystem.checkWithCCD(
+            px, py,
+            prevX, prevY,
+            moveDist / Math.max(dt, 0.001), // instantaneous velocity magnitude
+            gameObjects,
+            currentDistance,
+            previousDistance,
+            isDashing,
+            this.playerPhysics.isSliding
+        );
     }
 
     // Заглушки для совместимости (больше не используются)

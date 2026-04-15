@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ComicPunch } from './ComicPunch';
 import { OnomatopoeiaTags } from '../../constants/Onomatopoeia';
 import { UI_LAYERS } from '../../constants';
+import { eventBus } from '../../utils/eventBus';
 
 interface FeedbackItem {
     id: string;
@@ -51,25 +52,18 @@ export const ComicFeedback: React.FC = () => {
 
     useEffect(() => {
         const timeoutsSnapshot = timeoutsRef.current;
-        const handleHit = () => addFeedback('FAIL', '#FF4444');
-        const handleCollect = () => addFeedback('VICTORY', '#44FF44');
-        const handleBoost = () => addFeedback('START', '#4444FF');
-        const handlePerfect = () => addFeedback('PERFECT', '#FF00FF'); // Magenta for perfect
-        const handleCombo = () => addFeedback('COMBO', '#FFA500'); // Orange for combo
-
-        window.addEventListener('player-hit', handleHit);
-        window.addEventListener('player-collect-strong', handleCollect);
-        window.addEventListener('player-boost', handleBoost);
-        window.addEventListener('perfect-timing', handlePerfect);
-        window.addEventListener('dash-chain', handleCombo);
+        const unsubHit = eventBus.on('player:hit', () => addFeedback('FAIL', '#FF4444'));
+        const unsubCollect = eventBus.on('player:collect-strong', () => addFeedback('VICTORY', '#44FF44'));
+        const unsubBoost = eventBus.on('player:boost', () => addFeedback('START', '#4444FF'));
+        const unsubPerfect = eventBus.on('player:perfect', () => addFeedback('PERFECT', '#FF00FF'));
+        const unsubDash = eventBus.on('player:dash-chain', () => addFeedback('COMBO', '#FFA500'));
 
         return () => {
-            window.removeEventListener('player-hit', handleHit);
-            window.removeEventListener('player-collect-strong', handleCollect);
-            window.removeEventListener('player-boost', handleBoost);
-            window.removeEventListener('perfect-timing', handlePerfect);
-            window.removeEventListener('dash-chain', handleCombo);
-
+            unsubHit();
+            unsubCollect();
+            unsubBoost();
+            unsubPerfect();
+            unsubDash();
             timeoutsSnapshot.forEach(timeout => clearTimeout(timeout));
             timeoutsSnapshot.clear();
         };

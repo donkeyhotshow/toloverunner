@@ -4,7 +4,7 @@
  * Gameplay slice — assembles sub-action modules without changing the external GameplaySlice API.
  *
  * Sub-modules (all in store/gameplay/):
- *   speedActions   — collectCoin, addDistance, slowDown, speed-boost, bacteriaJumpBonus
+ *   speedActions   — collectCoin, addDistance, slowDown, updateSlowEffects, speed-boost, bacteriaJumpBonus
  *   comboActions   — graze, incrementCombo, resetCombo, updateCombo, setAttack
  *   powerupActions — activateShield, activateMagnet, updateShieldTimer, updateMagnetTimer
  *   damageActions  — takeDamage, jump, stopJump, dash, invincibility, death timers
@@ -13,6 +13,7 @@
 import { StateCreator } from 'zustand';
 import { GameState, GameplaySlice } from './storeTypes';
 import { GameMode, DNACard } from '../types';
+import { RUN_SPEED_BASE, GAMEPLAY_CONFIG } from '../constants';
 import { eventBus } from '../utils/eventBus';
 import { debugLog } from '../utils/debug';
 
@@ -53,6 +54,7 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
         multiplier: 1.0,
         maxCombo: 0,
         lastCollectTime: 0,
+        lastGrazeTime: 0,
         perfectTimingBonus: 0,
 
         dashCooldown: 0,
@@ -70,6 +72,10 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
         speedBoostTimer: 0,
         isSpeedBoostActive: false,
         isImmortalityActive: false,
+
+        // Speed modifier system (v2.5)
+        baseSpeed: RUN_SPEED_BASE,
+        slowEffects: [],
 
         // DNA Card Collection v2.4.0
         dnaCards: [],
@@ -93,8 +99,9 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
 
         // ── Collect Gene (shared — reads from both score and persistence) ──────────
         collectGene: () => {
-            get().addScore(500);
+            // Single atomic set — was addScore (set #1) + separate set (set #2).
             set((s) => ({
+                score: Math.min(GAMEPLAY_CONFIG.MAX_SCORE, s.score + 500),
                 genesCollected: s.genesCollected + 1,
                 gems: s.gems + 1,
                 momentum: Math.min(2.0, s.momentum + 0.1)

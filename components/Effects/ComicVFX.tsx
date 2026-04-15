@@ -4,133 +4,69 @@
  * Особенности:
  * - "POW!", "BAM!", "BOOM!" текстовые эффекты
  * - Звездочки и молнии при столкновениях
- * - Halftone particles
  * - Соответствует Comic Book стилю UI
+ *
+ * Performance note: effect age is computed at render time from a stable
+ * `createdAt` timestamp — no setInterval polling needed.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Html } from '@react-three/drei';
 import { UI_LAYERS } from '../../constants';
+import { eventBus } from '../../utils/eventBus';
 
 interface ComicEffect {
     id: string;
     type: 'hit' | 'collect' | 'graze';
     position: [number, number, number];
-    timestamp: number;
+    maxAge: number; // ms
 }
 
 export const ComicVFX: React.FC = () => {
     const [effects, setEffects] = useState<ComicEffect[]>([]);
-    const [now, setNow] = useState(() => Date.now());
     const nextId = useRef(0);
 
-    useEffect(() => {
-        const t = setInterval(() => setNow(Date.now()), 50);
-        return () => clearInterval(t);
-    }, []);
+    const spawnEffect = (
+        type: ComicEffect['type'],
+        position: [number, number, number],
+        maxAge: number
+    ) => {
+        const id = `${type}-${nextId.current++}`;
+        setEffects(prev => [...prev, { id, type, position, maxAge }]);
+        setTimeout(() => setEffects(prev => prev.filter(e => e.id !== id)), maxAge);
+    };
 
     useEffect(() => {
-        const handleHit = (e: Event) => {
-            const customEvent = e as CustomEvent;
-            const detail = customEvent.detail || {};
-
-            const [px, py, pz] = detail.position || [0, 0, 0];
-            const newEffect: ComicEffect = {
-                id: `hit-${nextId.current++}`,
-                type: 'hit',
-                position: [px, py + 5, pz], // 🎨 Offset UP by 5 units
-                timestamp: Date.now()
-            };
-
-            setEffects(prev => [...prev, newEffect]);
-
-            // Удаляем эффект через 1 секунду
-            setTimeout(() => {
-                setEffects(prev => prev.filter(e => e.id !== newEffect.id));
-            }, 1000);
-        };
-
-        const handleCollect = (e: Event) => {
-            const customEvent = e as CustomEvent;
-            const detail = customEvent.detail || {};
-
-            const [px, py, pz] = detail.position || [0, 0, 0];
-            const newEffect: ComicEffect = {
-                id: `collect-${nextId.current++}`,
-                type: 'collect',
-                position: [px, py + 5, pz], // 🎨 Offset UP
-                timestamp: Date.now()
-            };
-
-            setEffects(prev => [...prev, newEffect]);
-
-            setTimeout(() => {
-                setEffects(prev => prev.filter(e => e.id !== newEffect.id));
-            }, 800);
-        };
-
-        const handleGraze = (e: Event) => {
-            const customEvent = e as CustomEvent;
-            const detail = customEvent.detail || {};
-
-            const [px, py, pz] = detail.position || [0, 0, 0];
-            const newEffect: ComicEffect = {
-                id: `graze-${nextId.current++}`,
-                type: 'graze',
-                position: [px, py + 5, pz], // 🎨 Offset UP
-                timestamp: Date.now()
-            };
-
-            setEffects(prev => [...prev, newEffect]);
-
-            setTimeout(() => {
-                setEffects(prev => prev.filter(e => e.id !== newEffect.id));
-            }, 600);
-        };
-
-        window.addEventListener('player-hit', handleHit);
-        window.addEventListener('player-collect-strong', handleCollect);
-        window.addEventListener('player-graze', handleGraze);
+        const unsubHit = eventBus.on('player:hit-vfx', ({ position }) => {
+            spawnEffect('hit', [position[0], position[1] + 5, position[2]], 1000);
+        });
+        const unsubCollect = eventBus.on('player:collect-strong', ({ position }) => {
+            spawnEffect('collect', [position[0], position[1] + 5, position[2]], 800);
+        });
+        const unsubGraze = eventBus.on('player:graze', ({ distance: _ }) => {
+            spawnEffect('graze', [0, 5, 0], 600);
+        });
 
         return () => {
-            window.removeEventListener('player-hit', handleHit);
-            window.removeEventListener('player-collect-strong', handleCollect);
-            window.removeEventListener('player-graze', handleGraze);
+            unsubHit();
+            unsubCollect();
+            unsubGraze();
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
         <group>
             {effects.map(effect => (
-                <ComicEffectSprite key={effect.id} effect={effect} now={now} />
+                <ComicEffectSprite key={effect.id} effect={effect} />
             ))}
         </group>
     );
 };
 
-const ComicEffectSprite: React.FC<{ effect: ComicEffect; now: number }> = ({ effect, now }) => {
-    const age = (now - effect.timestamp) / 1000; // seconds
-
-    // Анимация: появление -> рост -> исчезновение
-    let scale = 0;
-    let opacity = 0.7; // 🔥 FIX: Снижено с 1.0 до 0.7 для меньшей блокировки обзора
-    let rotation = 0;
-
-    if (age < 0.2) {
-        // Появление (0-0.2s): быстрый рост
-        scale = age / 0.2;
-        rotation = -0.3 * (1 - scale);
-    } else if (age < 0.7) {
-        // Удержание (0.2-0.7s)
-        scale = 1.0 + Math.sin(age * 10) * 0.1; // Легкая пульсация
-    } else {
-        // Исчезновение (0.7-1.0s)
-        const fadeProgress = (age - 0.7) / 0.3;
-        scale = 1.0 - fadeProgress * 0.5;
-        opacity = 0.7 - fadeProgress * 0.7; // Fade from 0.7 to 0
-    }
-
+const ComicEffectSprite: React.FC<{ effect: ComicEffect }> = ({ effect }) => {
     const config = getEffectConfig(effect.type);
+    const durationSec = effect.maxAge / 1000;
 
     return (
         <Html
@@ -146,7 +82,7 @@ const ComicEffectSprite: React.FC<{ effect: ComicEffect; now: number }> = ({ eff
             <div
                 className="comic-vfx"
                 style={{
-                    fontSize: `${config.size * scale}px`,
+                    fontSize: `${config.size}px`,
                     color: config.color,
                     fontFamily: 'Impact, "Comic Sans MS", cursive',
                     fontWeight: 'black',
@@ -156,17 +92,14 @@ const ComicEffectSprite: React.FC<{ effect: ComicEffect; now: number }> = ({ eff
                                  3px  3px 0 #000,
                                  0px 0px 10px ${config.glowColor}`,
                     WebkitTextStroke: '3px black',
-                    opacity: opacity,
-                    transform: `rotate(${rotation * 30}deg)`,
-                    transition: 'transform 0.1s ease-out',
                     letterSpacing: '2px',
-                    animation: effect.type === 'hit' ? 'shake 0.1s infinite' : 'none'
+                    animation: `comicVfxPop ${durationSec}s cubic-bezier(0.175,0.885,0.32,1.275) forwards`,
                 }}
             >
                 {config.text}
             </div>
 
-            {/* Звездочки для коллекта */}
+            {/* Stars for collect */}
             {effect.type === 'collect' && (
                 <div style={{
                     position: 'absolute',
@@ -174,11 +107,25 @@ const ComicEffectSprite: React.FC<{ effect: ComicEffect; now: number }> = ({ eff
                     left: '50%',
                     transform: 'translateX(-50%)',
                     fontSize: '40px',
-                    opacity: opacity
+                    animation: `comicVfxFade ${durationSec}s ease-out forwards`,
                 }}>
                     ✨⭐✨
                 </div>
             )}
+
+            <style>{`
+                @keyframes comicVfxPop {
+                    0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+                    15%  { transform: scale(1.3) rotate(8deg);  opacity: 0.85; }
+                    60%  { transform: scale(1.0) rotate(0deg);  opacity: 0.7; }
+                    100% { transform: scale(0.8) rotate(-5deg); opacity: 0; }
+                }
+                @keyframes comicVfxFade {
+                    0%   { opacity: 0.9; }
+                    70%  { opacity: 0.7; }
+                    100% { opacity: 0; }
+                }
+            `}</style>
         </Html>
     );
 };

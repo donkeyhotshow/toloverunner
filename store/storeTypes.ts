@@ -59,7 +59,9 @@ export interface SessionSlice {
   // Session Stats
   sessionStartTime: number;
   timePlayed: number;
-  lastTimestamp: number;
+  /** Wall-clock-free game time in seconds. Incremented by fixed dt each tick. Used instead of
+   *  performance.now() for all gameplay timing (combo windows, graze debounce, dash chains). */
+  gameClock: number;
   nearestEnemyDistance: number;
   difficultyMultiplier: number;
 
@@ -78,7 +80,7 @@ export interface SessionSlice {
   resetGame: () => void;
   revive: () => boolean;
 
-  increaseDistance: (delta: number) => void;
+  increaseDistance: (delta: number, dt: number) => void;
   setDistance: (dist: number) => void;
   updateGameTimer: (dt: number) => void;
   addScore: (amount: number) => void;
@@ -109,6 +111,8 @@ export interface GameplaySlice {
   multiplier: number;
   maxCombo: number;
   lastCollectTime: number;
+  /** Separate dedup timer for graze scoring (independent from coin collection). */
+  lastGrazeTime: number;
   perfectTimingBonus: number;
 
   // Combat System v2.4.0
@@ -136,6 +140,20 @@ export interface GameplaySlice {
   isSpeedBoostActive: boolean; // Visual flag
   isImmortalityActive: boolean; // Visual flag
 
+  /**
+   * Progression-driven speed without any powerup modifiers.
+   * slowDown() and activateSpeedBoost() derive `speed` from this value
+   * so that boosts/slows never permanently corrupt the progression curve.
+   */
+  baseSpeed: number;
+  /**
+   * Active slow effects from environmental hazards (e.g. immune-cell slow).
+   * Each entry stores `remainingTime` in **seconds** (decremented by fixed dt each tick).
+   * This is deterministic — no wall-clock timestamps (performance.now) are used.
+   * `updateSlowEffects(dt)` decrements and removes expired entries, then recomputes `speed`.
+   */
+  slowEffects: ReadonlyArray<{ factor: number; remainingTime: number }>;
+
   // === DNA CARD COLLECTION v2.4.0 ===
   dnaCards: Array<{
     id: string;
@@ -153,6 +171,8 @@ export interface GameplaySlice {
   graze: () => void;
   takeDamage: (obj?: { type?: string | number }) => void;
   slowDown: (factor?: number, duration?: number) => void;
+  /** Decrement remainingTime on all slow effects by dt (seconds) and recompute speed. Call once per fixed tick. */
+  updateSlowEffects: (dt: number) => void;
   bacteriaJumpBonus: () => void;
   jump: () => void;
   stopJump: () => void;

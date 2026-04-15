@@ -14,6 +14,7 @@ import { WIN_DISTANCE } from '../../constants';
 import { safeDeltaTime, isValidNumber } from '../../utils/safeMath';
 import { debugError, debugLog } from '../../utils/debug';
 import { eventBus } from '../../utils/eventBus';
+import { GameLoop } from '../../core/gameLoop';
 
 const ORIGIN_RESET_THRESHOLD = 5000;
 const _GRID_SNAP = 1000; // Snap recycled positions to 0.001 precision (1/1000)
@@ -52,8 +53,11 @@ export const WorldLevelManager: React.FC = React.memo(() => {
 
     // State & Distance Tracking
     const accumulatedScoreDistance = useRef(0);
+    const accumulatedScoreDt = useRef(0); // accumulated time for increaseDistance sync
     const lastStoreUpdate = useRef(0);
     const lastLoggedDistanceRef = useRef(0);
+    // Fixed-timestep game loop (replaces manual timerAccumulator + while-loop)
+    const gameLoopRef = useRef(new GameLoop());
 
     // Hooks
     const trackSystem = useTrackSystem();
@@ -72,6 +76,8 @@ export const WorldLevelManager: React.FC = React.memo(() => {
             trackSystem.reset();
             totalDistanceRef.current = 0;
             accumulatedScoreDistance.current = 0;
+            accumulatedScoreDt.current = 0;
+            gameLoopRef.current.reset();
         }
     }, [isPlaying, trackSystem]);
 
@@ -99,6 +105,7 @@ export const WorldLevelManager: React.FC = React.memo(() => {
                 if (isValidNumber(moveDist) && moveDist > 0) {
                     totalDistanceRef.current += moveDist;
                     accumulatedScoreDistance.current += moveDist;
+                    accumulatedScoreDt.current += safeDelta;
                 }
 
                 if (!isValidNumber(totalDistanceRef.current)) {
@@ -125,8 +132,12 @@ export const WorldLevelManager: React.FC = React.memo(() => {
 
                 // Sync Store (Throttled 0.2s for smoother speed/score updates)
                 if (time - lastStoreUpdate.current > 0.2) {
-                    useStore.getState().increaseDistance(accumulatedScoreDistance.current);
+                    useStore.getState().increaseDistance(
+                        accumulatedScoreDistance.current,
+                        accumulatedScoreDt.current
+                    );
                     accumulatedScoreDistance.current = 0;
+                    accumulatedScoreDt.current = 0;
                     lastStoreUpdate.current = time;
 
                     eventBus.emit('world:speed-changed', { speed: currentSpeed });
@@ -135,13 +146,18 @@ export const WorldLevelManager: React.FC = React.memo(() => {
                 // 2. Systems Update
                 trackSystem.update(totalDistanceRef.current);
 
+                // Fixed-timestep timer updates: all store timer decrements run at exactly
+                // FIXED_DT (1/60 s) per tick regardless of render FPS.
                 const store = useStore.getState();
-                store.updateDashCooldown(safeDelta);
-                store.updateShieldTimer(safeDelta);
-                store.updateMagnetTimer(safeDelta);
-                store.updateSpeedBoostTimer(safeDelta);
-                store.updateInvincibilityTimer(safeDelta);
-                store.updateDeathTimer(safeDelta);
+                gameLoopRef.current.tick(safeDelta, (dt) => {
+                    store.updateDashCooldown(dt);
+                    store.updateShieldTimer(dt);
+                    store.updateMagnetTimer(dt);
+                    store.updateSpeedBoostTimer(dt);
+                    store.updateInvincibilityTimer(dt);
+                    store.updateDeathTimer(dt);
+                    store.updateSlowEffects(dt);
+                });
 
                 // 3. Culling (High Frequency - Local)
                 const objects = objectsRef.current;

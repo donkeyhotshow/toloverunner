@@ -3,30 +3,22 @@
  *
  * When triggered, it scales down the game loop delta for a short duration.
  * This creates a "pause" effect that emphasizes impacts without stopping the render loop.
+ * Subscribes via eventBus (single event system — no window events).
  */
+
+import { eventBus } from '../utils/eventBus';
 
 class HitStopManager {
     private remainingTime: number = 0;
     private activeScale: number = 0.0;
-    private destroyed = false;
-
-    private boundOnPlayerHit = () => this.onPlayerHit();
-    private boundHitStop: EventListener = (e: Event) => {
-        const ev = e as CustomEvent<{ duration?: number; scale?: number }>;
-        const duration = ev.detail?.duration ?? 0.08;
-        const scale = ev.detail?.scale ?? 0.0;
-        this.trigger(duration, scale);
-    };
+    private unsubHit: (() => void) | null = null;
+    private unsubStop: (() => void) | null = null;
 
     constructor() {
-        if (typeof window !== 'undefined') {
-            window.addEventListener('player-hit', this.boundOnPlayerHit);
-            window.addEventListener('hit-stop', this.boundHitStop as EventListener);
-        }
-    }
-
-    private onPlayerHit() {
-        this.trigger(0.08, 0.0);
+        this.unsubHit = eventBus.on('player:hit', () => this.trigger(0.08, 0.0));
+        this.unsubStop = eventBus.on('system:hit-stop', ({ duration, scale }) => {
+            this.trigger(duration, scale ?? 0.0);
+        });
     }
 
     public trigger(duration: number, scale: number = 0.0) {
@@ -43,10 +35,10 @@ class HitStopManager {
     }
 
     public destroy(): void {
-        if (this.destroyed || typeof window === 'undefined') return;
-        window.removeEventListener('player-hit', this.boundOnPlayerHit);
-        window.removeEventListener('hit-stop', this.boundHitStop as EventListener);
-        this.destroyed = true;
+        this.unsubHit?.();
+        this.unsubStop?.();
+        this.unsubHit = null;
+        this.unsubStop = null;
     }
 }
 

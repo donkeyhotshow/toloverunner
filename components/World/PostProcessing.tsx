@@ -21,6 +21,7 @@ import { useFrame } from '@react-three/fiber';
 import { useStore } from '../../store';
 import { getPerformanceManager, QualityLevel } from '../../infrastructure/performance/PerformanceManager';
 import type { VignetteEffect } from 'postprocessing';
+import { eventBus } from '../../utils/eventBus';
 
 export const PostProcessing: React.FC = (): React.ReactElement | null => {
     // Refs instead of state: mutations here never cause React re-renders
@@ -39,17 +40,13 @@ export const PostProcessing: React.FC = (): React.ReactElement | null => {
     const isLowEnd = currentQuality <= QualityLevel.LOW;
     const multisampling = isLowEnd ? 2 : 4;
 
-    // Listen for hit/perfect events and set ref values — no React re-render needed
+    // Subscribe via eventBus — single event system, no window events
     useEffect(() => {
-        const handleHit = () => { hitIntensityRef.current = 0.8; };
-        const handlePerfect = () => { perfectIntensityRef.current = 0.6; };
-        
-        window.addEventListener('player-hit', handleHit);
-        window.addEventListener('player-perfect', handlePerfect);
-        
+        const unsubHit = eventBus.on('player:hit', () => { hitIntensityRef.current = 0.8; });
+        const unsubPerfect = eventBus.on('player:perfect', () => { perfectIntensityRef.current = 0.6; });
         return () => {
-            window.removeEventListener('player-hit', handleHit);
-            window.removeEventListener('player-perfect', handlePerfect);
+            unsubHit();
+            unsubPerfect();
         };
     }, []);
 

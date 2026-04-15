@@ -24,6 +24,8 @@ export const MIN_ACTIVE_DISTANCE = 100;
 export const ACCELERATION = 0.8;
 export const MAX_ACCELERATION = 2.5;
 export const SPEED_BOOST_MULTIPLIER = 1.5;
+/** Multiplier applied to baseSpeed when a speed-boost powerup is active. */
+export const SPEED_BOOST_FACTOR = 2.0;
 export const DASH_SPEED_BOOST = 8.0;
 
 export const JUMP_CURVE = 'ease-out';

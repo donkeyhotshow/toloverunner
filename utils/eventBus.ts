@@ -7,17 +7,29 @@
 type GameEvents = {
     // Player events
     'player:collect': { type: string; points: number; color?: string };
+    'player:collect-strong': { position: [number, number, number] };
     'player:hit': { lives: number; damage: number };
+    'player:hit-vfx': { position: [number, number, number] };
     'player:death': { score: number; distance: number };
     'player:jump': void;
     'player:jump_input': void;
     'player:stop_jump': void;
     'player:dash': { chain: number };
+    'player:dash-chain': void;
     'player:graze': { distance: number };
+    'player:boost': void;
+    'player:landed': { squashIntensity: number };
     // Membrane pop (used by ComicPopupSystem for POP! effect)
     'player:membrane_pop': void;
     // Player wasted/death variant (used by ComicPopupSystem for SPLAT! effect)
     'player:wasted': void;
+    // Near-miss with a dangerous enemy
+    'player:fear': void;
+    // Perfect-timing coin collection bonus
+    'player:perfect': { bonus: number };
+
+    // UI events
+    'ui:hud-pulse': { element: string; intensity: number };
 
     // World/Level events
     'world:chunk-generated': { id: string; type: string };
@@ -26,7 +38,7 @@ type GameEvents = {
     'world:origin-reset': { offset: number };
 
     // System events
-    'system:hit-stop': { duration: number };
+    'system:hit-stop': { duration: number; scale?: number };
     'system:screen-shake': { intensity: number; duration: number };
     'system:play-sound': { sound: string; volume?: number; pitch?: number };
 
@@ -58,6 +70,14 @@ type GameEvents = {
     // DNA events
     'dna_card_collected': { cardId: string; rarity: string };
     'dna:synergy_update': { synergies: string[]; combos?: string[]; totalCards?: number };
+
+    // Particle effects
+    'particle:burst': {
+        position: [number, number, number];
+        color?: string;
+        type: 'hit' | 'powerup' | 'dust' | 'combat-kill';
+        count?: number;
+    };
 };
 
 type Handler<T> = (data: T) => void;

@@ -28,7 +28,7 @@ export const useGamePhysics = () => {
     const fearWasCloseRef = useRef(false);
 
     useEffect(() => {
-        // Listen for jump input from store
+        // Listen for jump input via eventBus (single event system — no window events)
         const handleJumpInput = () => {
             physicsEngine.jump();
         };
@@ -37,13 +37,13 @@ export const useGamePhysics = () => {
             physicsEngine.stopJump();
         };
 
-        window.addEventListener('player:jump_input', handleJumpInput);
-        window.addEventListener('player:stop_jump', handleStopJump);
+        const unsubJump = eventBus.on('player:jump_input', handleJumpInput);
+        const unsubStop = eventBus.on('player:stop_jump', handleStopJump);
 
         return () => {
             physicsEngine.dispose();
-            window.removeEventListener('player:jump_input', handleJumpInput);
-            window.removeEventListener('player:stop_jump', handleStopJump);
+            unsubJump();
+            unsubStop();
         };
     }, [physicsEngine]);
 
@@ -105,7 +105,7 @@ export const useGamePhysics = () => {
 
             let currentPhysicsDist = totalDistanceRef.current - (safeDelta * effectiveSpeed);
 
-            stabilizer.update(delta, (dt: number) => {
+            stabilizer.update(safeDelta, (dt: number) => {
                 const stepMoveDist = effectiveSpeed * dt;
                 currentPhysicsDist += stepMoveDist;
 
@@ -125,22 +125,21 @@ export const useGamePhysics = () => {
                             const destroyed = combat.destroyEnemy(obj);
                             if (destroyed) {
                                 // Visual burst for combat kill
-                                window.dispatchEvent(new CustomEvent('particle-burst', {
-                                    detail: {
+                                eventBus.emit('particle:burst', {
                                         position: [obj.position[0], obj.position[1], objRelZ],
                                         color: '#FFFFFF',
                                         type: 'combat-kill',
                                         count: 30
-                                    }
-                                }));
+                                    });
                                 continue;
                             }
                         }
                     }
                 }
 
-                // Update combo timers
+                // Update combo timers and game clock — fixed dt ensures determinism
                 store.updateCombo(dt);
+                store.updateGameTimer(dt);
 
                 const collision = physicsEngine.update(
                     dt,
@@ -233,8 +232,7 @@ export const useGamePhysics = () => {
             isGrounded: finalPlayer.isGrounded
         });
 
-        // Decay momentum/timers
-        store.updateGameTimer(delta);
+        // Decay momentum/timers — gameClock updated inside the fixed-step callback above
 
         // 🔍 FEAR MECHANIC: Find nearest obstacle in current lane
         let nearestDist = 999;
@@ -288,7 +286,7 @@ export const useGamePhysics = () => {
         // GDD: emit player:fear on rising edge when a lethal enemy enters FEAR_DISTANCE (rate-limited)
         const enemyIsClose = nearestDist < PLAYER_PHYSICS.FEAR_DISTANCE;
         if (enemyIsClose && !fearWasCloseRef.current) {
-            window.dispatchEvent(new CustomEvent('player:fear', { detail: { distance: nearestDist } }));
+            eventBus.emit('player:fear', undefined);
         }
         fearWasCloseRef.current = enemyIsClose;
 
@@ -350,39 +348,27 @@ export const useGamePhysics = () => {
                     );
                     finalPlayer.applyRecoil(recoilDir);
 
-                    window.dispatchEvent(new CustomEvent('screen-shake', {
-                        detail: { intensity: 0.3, duration: 0.3 }
-                    }));
+                    eventBus.emit('system:screen-shake', { intensity: 0.3, duration: 0.3 });
 
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'enemy-hit', volume: 0.8 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'enemy-hit', volume: 0.8 });
 
-                    window.dispatchEvent(new CustomEvent('player-hit', {
-                        detail: { position: [pos.x, pos.y, pos.z] }
-                    }));
+                    eventBus.emit('player:hit-vfx', { position: [pos.x, pos.y, pos.z] });
 
-                    window.dispatchEvent(new CustomEvent('particle-burst', {
-                        detail: {
+                    eventBus.emit('particle:burst', {
                             position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
                             color: '#FF4444',
                             type: 'hit',
                             count: 40
-                        }
-                    }));
+                        });
                 } else {
                     // Блок щитом/бессмертием: мягкий эффект без удара по игроку
-                    window.dispatchEvent(new CustomEvent('particle-burst', {
-                        detail: {
+                    eventBus.emit('particle:burst', {
                             position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
                             color: '#66CCFF',
-                            type: 'shield-block',
+                            type: 'powerup',
                             count: 20
-                        }
-                    }));
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'shield', volume: 0.9 }
-                    }));
+                        });
+                    eventBus.emit('system:play-sound', { sound: 'shield', volume: 0.9 });
                 }
 
                 if (collision.jumpedOverObject && willTakeDamage) {
@@ -394,61 +380,41 @@ export const useGamePhysics = () => {
                 obj.collecting = 0.35;
 
                 const isValuable = (obj.type === ObjectType.GENE || obj.type === ObjectType.DNA_HELIX);
-                window.dispatchEvent(new CustomEvent('particle-burst', {
-                    detail: {
+                eventBus.emit('particle:burst', {
                         position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
                         color: isValuable ? '#00FFFF' : '#FFD700',
                         type: 'powerup',
                         count: isValuable ? 20 : 10
-                    }
-                }));
+                    });
 
                 // Batch all collection events
                 if (isValuable) {
                     store.collectGene();
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'gene-collect', volume: 0.7 }
-                    }));
-                    window.dispatchEvent(new CustomEvent('hud-pulse', {
-                        detail: { element: 'score', intensity: 1.3 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'gene-collect', volume: 0.7 });
+                    eventBus.emit('ui:hud-pulse', { element: 'score', intensity: 1.3 });
                 } else if (obj.type === ObjectType.COIN) {
                     store.collectCoin(5); // GDD v2.2.0: 5 points per coin
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'coin-collect', volume: 0.6 }
-                    }));
-                    window.dispatchEvent(new CustomEvent('hud-pulse', {
-                        detail: { element: 'score', intensity: 1.2 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'coin-collect', volume: 0.6 });
+                    eventBus.emit('ui:hud-pulse', { element: 'score', intensity: 1.2 });
                     // ✨ Visual Feedback: Turquoise Burst for Rings
-                    window.dispatchEvent(new CustomEvent('particle-burst', {
-                        detail: {
+                    eventBus.emit('particle:burst', {
                             position: [obj.position[0], obj.position[1], obj.position[2] + totalDistanceRef.current],
                             color: '#40E0D0',
                             type: 'powerup',
                             count: 15
-                        }
-                    }));
+                        });
                 } else if (obj.type === ObjectType.SHIELD) {
                     store.activateShield();
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'powerup-collect', volume: 0.7 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'powerup-collect', volume: 0.7 });
                 } else if (obj.type === ObjectType.SPEED_BOOST) {
                     store.activateSpeedBoost();
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'powerup-collect', volume: 0.7 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'powerup-collect', volume: 0.7 });
                 } else if (obj.type === ObjectType.MAGNET) {
                     store.activateMagnet();
-                    window.dispatchEvent(new CustomEvent('play-sound', {
-                        detail: { sound: 'powerup-collect', volume: 0.7 }
-                    }));
+                    eventBus.emit('system:play-sound', { sound: 'powerup-collect', volume: 0.7 });
                 }
 
-                window.dispatchEvent(new CustomEvent('player-collect-strong', {
-                    detail: { position: [pos.x, pos.y, pos.z] }
-                }));
+                eventBus.emit('player:collect-strong', { position: [pos.x, pos.y, pos.z] });
             }
         }
 
