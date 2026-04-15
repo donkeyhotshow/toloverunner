@@ -24,7 +24,10 @@ export const ATTACK_CONFIGS: Record<'up' | 'down', CombatAttack> = {
     }
 };
 
-// Enemy types that can be destroyed (using string for flexibility)
+// Enemy types that can be destroyed (using string for flexibility).
+// GDD: Viruses (VIRUS_KILLER_LOW, VIRUS_KILLER_HIGH, etc.) cause instant death and bypass
+// MEMBRANE_SHIELD — they must NOT be in this list. Attempting to "destroy" a lethal virus
+// with a combat attack would cause confusing double-punishment (resetCombo + instant death).
 const DESTRUCTIBLE_TYPES: string[] = [
     'GLOBUS_NORMAL',
     'GLOBUS_ANGRY',
@@ -32,17 +35,15 @@ const DESTRUCTIBLE_TYPES: string[] = [
     'BACTERIA_MID',
     'BACTERIA_WALL',
     'BACTERIA_HAPPY',
-    'VIRUS_KILLER_LOW',
     'COMBAT'
 ];
 
 // Enemies requiring UP attack (flying/low)
-const UP_ATTACK_EFFECTIVE: string[] = ['GLOBUS_NORMAL', 'GLOBUS_ANGRY', 'VIRUS_KILLER_LOW'];
+const UP_ATTACK_EFFECTIVE: string[] = ['GLOBUS_NORMAL', 'GLOBUS_ANGRY'];
 // Enemies requiring DOWN attack (ground)
 const DOWN_ATTACK_EFFECTIVE: string[] = ['BACTERIA_LOW', 'BACTERIA_MID', 'BACTERIA_WALL', 'BACTERIA_HAPPY'];
 
 export const useCombatSystem = () => {
-    const attackEndTimeRef = useRef<number>(0);
     const combatScoreRef = useRef<number>(0);
     const { setAttack, incrementCombo, resetCombo, activateSpeedBoost, setLocalPlayerState } = useStore();
 
@@ -51,16 +52,15 @@ export const useCombatSystem = () => {
         const config = ATTACK_CONFIGS[direction];
         if (!config) return;
 
-        const now = performance.now();
-        attackEndTimeRef.current = now + config.duration;
-
-        // Update store with specialized action
+        // Update store with specialized action (attackTimer set inside setAttack)
         setAttack(direction);
     }, [setAttack]);
 
-    // Check if player is currently attacking
+    // Check if player is currently attacking.
+    // Uses attackTimer from the store (deterministic, fixed-dt) instead of performance.now()
+    // so attack windows are consistent in replays and multiplayer.
     const isAttacking = useCallback((): boolean => {
-        return performance.now() < attackEndTimeRef.current;
+        return useStore.getState().attackTimer > 0;
     }, []);
 
     // Get current attack type
@@ -162,7 +162,6 @@ export const useCombatSystem = () => {
     }, [isAttackEffective, incrementCombo, resetCombo, activateSpeedBoost, setLocalPlayerState]);
 
     const resetCombat = useCallback(() => {
-        attackEndTimeRef.current = 0;
         combatScoreRef.current = 0;
     }, []);
 

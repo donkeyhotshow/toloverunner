@@ -97,11 +97,12 @@ export const useGamePhysics = () => {
         const safeDelta = safeDeltaTime(delta, SAFETY_CONFIG.MAX_DELTA_TIME, 0.001);
         if (safeDelta > 0.001) {
             const currentSpeed = store.speed || 30;
-            const boost = store.speedBoostActive ? 2 : 1;
+            // `speed` from the store already includes SPEED_BOOST_FACTOR via
+            // computeEffectiveSpeed — do NOT multiply by boost again here.
             const isDashing = store.isDashing;
 
             const dashBoost = isDashing ? 2.0 : 1.0;
-            const effectiveSpeed = currentSpeed * boost * dashBoost;
+            const effectiveSpeed = currentSpeed * dashBoost;
 
             let currentPhysicsDist = totalDistanceRef.current - (safeDelta * effectiveSpeed);
 

@@ -23,7 +23,7 @@ type RegisterTimeout = (id: ReturnType<typeof setTimeout>) => void;
 export function createDamageActions(set: Set, get: Get, registerGameplayTimeout: RegisterTimeout) {
     return {
         takeDamage: (obj?: { type?: string | number }) => {
-            const { isImmortalityActive, isInvincible, lives, shieldActive, speedBoostActive, maxLives, speed } = get();
+            const { isImmortalityActive, isInvincible, lives, shieldActive, speedBoostActive, maxLives } = get();
 
             // GDD: Viruses bypass shield — instant death
             const ignoresShield = !!obj?.type && VIRUS_TYPE_SET.has(obj.type);
@@ -44,21 +44,26 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
 
             const finalLives = ignoresShield ? 0 : Math.max(0, lives - 1);
             const willDie = finalLives <= 0;
-            const slowedSpeed = Math.max(GAMEPLAY_CONFIG.MIN_SPEED, speed * 0.75);
 
             // Single atomic set — no intermediate state where the player is
             // simultaneously "about to die" AND "invincible".
-            set({
+            // Speed is read from the same state snapshot (s.speed) to avoid stale closure.
+            set(s => ({
                 lives: safeClamp(finalLives, 0, maxLives, 0),
                 combo: 0,
                 multiplier: 1,
-                speed: safeClamp(slowedSpeed, GAMEPLAY_CONFIG.MIN_SPEED, GAMEPLAY_CONFIG.MAX_SPEED, slowedSpeed),
+                speed: safeClamp(
+                    Math.max(GAMEPLAY_CONFIG.MIN_SPEED, s.speed * 0.75),
+                    GAMEPLAY_CONFIG.MIN_SPEED,
+                    GAMEPLAY_CONFIG.MAX_SPEED,
+                    GAMEPLAY_CONFIG.MIN_SPEED
+                ),
                 // Invincibility frames only when the player survives the hit
                 isInvincible: !willDie,
                 invincibilityTimer: willDie ? 0 : 2.5,
                 nearestEnemyDistance: 999,
                 ...(willDie ? { deathTimer: 1.0 } : {}),
-            });
+            }));
 
             eventBus.emit('player:hit', { lives: finalLives, damage: 1 });
             if (willDie) {

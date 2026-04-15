@@ -99,6 +99,13 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 invincibilityTimer: 0,
                 deathTimer: 0,          // Guard: prevent updateDeathTimer from triggering GAME_OVER on rapid restart
                 nearestEnemyDistance: 999,
+                // Reset combat/combo state
+                momentum: 1.0,
+                dashChainCount: 0,
+                attackState: 'none',
+                comboTimer: 0,
+                attackTimer: 0,
+                speedLinesActive: false,
                 // Reset TDI
                 tdi: 0,
                 visibleObstacles: 0

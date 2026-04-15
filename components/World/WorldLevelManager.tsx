@@ -98,9 +98,10 @@ export const WorldLevelManager: React.FC = React.memo(() => {
         const callback = (delta: number, time: number) => {
             try {
                 const safeDelta = safeDeltaTime(delta, 0.1, 0.001);
+                // `speed` from the store already includes SPEED_BOOST_FACTOR via
+                // computeEffectiveSpeed — do NOT multiply by boost again here.
                 const currentSpeed = speed || 30;
-                const boost = speedBoostActive ? 2 : 1;
-                const moveDist = currentSpeed * safeDelta * boost;
+                const moveDist = currentSpeed * safeDelta;
 
                 if (isValidNumber(moveDist) && moveDist > 0) {
                     totalDistanceRef.current += moveDist;
