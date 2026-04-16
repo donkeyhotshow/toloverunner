@@ -46,13 +46,15 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
         startGame: (mode = GameMode.ENDLESS) => {
             debugLog("Starting countdown sequence...");
             unifiedAudio.init();
-            set({
+            // Use state callback so `maxLives` is read from the same snapshot as the write —
+            // avoids stale value if a shop upgrade fires concurrently.
+            set(s => ({
                 status: GameStatus.COUNTDOWN,
                 gameMode: mode,
-                lives: get().maxLives,
+                lives: s.maxLives,
                 score: 0,
                 distance: 0
-            });
+            }));
         },
 
         setGameMode: (mode: GameMode) => set({ gameMode: mode }),
@@ -114,12 +116,13 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
 
         resetGame: () => {
             get().clearPendingGameplayTimeouts?.();
-            set({
+            // Use state callback so `maxLives` is read from the same snapshot as the write.
+            set(s => ({
                 score: 0,
-                lives: get().maxLives,
+                lives: s.maxLives,
                 distance: 0,
                 status: GameStatus.MENU
-            });
+            }));
         },
 
         restartGame: () => {

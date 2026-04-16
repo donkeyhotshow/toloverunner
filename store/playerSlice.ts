@@ -41,9 +41,14 @@ export const createPlayerSlice: StateCreator<GameState, [], [], PlayerSlice> = (
     purchaseSkin: (skinId, cost) => {
         const { gems, ownedSkins } = get();
         if (gems >= cost && !ownedSkins.includes(skinId)) {
-            set({
-                gems: gems - cost,
-                ownedSkins: [...ownedSkins, skinId]
+            // Use state callback to read gems/ownedSkins from the same snapshot as the write
+            // — prevents stale values if concurrent shop actions fire in the same frame.
+            set(s => {
+                if (s.gems < cost || s.ownedSkins.includes(skinId)) return {};
+                return {
+                    gems: s.gems - cost,
+                    ownedSkins: [...s.ownedSkins, skinId]
+                };
             });
             get().saveData();
             return true;

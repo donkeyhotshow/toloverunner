@@ -105,8 +105,14 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
                     eventBus.emit('player:dash-chain', undefined);
                 }
 
-                const t1 = setTimeout(() => set({ isDashing: false }), 400);
-                const t2 = setTimeout(() => set({ isInvincible: false }), 600);
+                // t1 ends the dash state. t2 clears dash-based invincibility — but only if
+                // no hit-based invincibility frames are still running (invincibilityTimer > 0).
+                // Using state callbacks prevents these timeouts from overwriting concurrent
+                // state changes (e.g. a virus hit granting 2.5s of invincibility).
+                const t1 = setTimeout(() => set(() => ({ isDashing: false })), 400);
+                const t2 = setTimeout(() => set(s => ({
+                    isInvincible: s.invincibilityTimer > 0 || s.isDashing,
+                })), 600);
                 registerGameplayTimeout(t1);
                 registerGameplayTimeout(t2);
             }
