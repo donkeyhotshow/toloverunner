@@ -14,6 +14,9 @@ import { safeClamp } from '../../utils/safeMath';
 type Set = Parameters<StateCreator<GameState>>[0];
 type Get = Parameters<StateCreator<GameState>>[1];
 
+/** UP attack animation is 300ms (0.3s); DOWN is 400ms (0.4s). */
+const ATTACK_TIMER_BY_DIRECTION: Readonly<Record<string, number>> = { up: 0.3, down: 0.4 };
+
 export function createComboActions(set: Set, get: Get) {
     return {
         graze: () => {
@@ -95,12 +98,11 @@ export function createComboActions(set: Set, get: Get) {
 
         setAttack: (attackState: 'none' | 'up' | 'down') => {
             // UP attack animation is 300ms (0.3s); DOWN is 400ms (0.4s).
-            // Using per-direction durations prevents the hitbox from being active 100ms too long
-            // for UP attacks, which would allow hitting enemies the player is no longer attacking.
-            const timerByDirection: Record<string, number> = { up: 0.3, down: 0.4 };
+            // ATTACK_TIMER_BY_DIRECTION is defined outside this function to avoid re-allocation
+            // on every setAttack() call in the hot combat path.
             set({
                 attackState,
-                attackTimer: timerByDirection[attackState] ?? 0,
+                attackTimer: ATTACK_TIMER_BY_DIRECTION[attackState] ?? 0,
             });
             if (attackState === 'up') {
                 eventBus.emit('combat:attack_up', undefined);
