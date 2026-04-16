@@ -23,17 +23,19 @@ type RegisterTimeout = (id: ReturnType<typeof setTimeout>) => void;
 export function createDamageActions(set: Set, get: Get, registerGameplayTimeout: RegisterTimeout) {
     return {
         takeDamage: (obj?: { type?: string | number }) => {
-            const { isImmortalityActive, isInvincible, lives, shieldActive, speedBoostActive, maxLives } = get();
+            const { isImmortalityActive, isInvincible, lives, shieldActive, maxLives } = get();
 
             // GDD: Viruses bypass shield — instant death
             const ignoresShield = !!obj?.type && VIRUS_TYPE_SET.has(obj.type);
 
             if (shieldActive && !ignoresShield) {
-                set({
+                // Use state callback so speedBoostActive is read from the same snapshot
+                // as the write — concurrent updateSpeedBoostTimer() could change it.
+                set(s => ({
                     shieldActive: false,
                     shieldTimer: 0,
-                    isImmortalityActive: speedBoostActive
-                });
+                    isImmortalityActive: s.speedBoostActive,
+                }));
                 eventBus.emit('player:membrane_pop', undefined as void);
                 eventBus.emit('system:play-sound', { sound: 'membrane_pop', volume: 0.8 });
                 return;
@@ -119,25 +121,31 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
         updateInvincibilityTimer: (delta: number) => {
             const { invincibilityTimer, isInvincible } = get();
             if (invincibilityTimer <= 0 && !isInvincible) return;
-            const newTimer = Math.max(0, invincibilityTimer - delta);
-            // Use state callback to read isDashing from the same snapshot as the write,
-            // avoiding a stale get() call after set() already applied.
-            set(s => ({
-                invincibilityTimer: newTimer,
-                isInvincible: newTimer > 0 || s.isDashing,
-            }));
+            // Compute newTimer inside set(s => ...) so a concurrent revive() that sets
+            // invincibilityTimer:2.0 cannot be overwritten by a stale pre-computed value.
+            set(s => {
+                if (s.invincibilityTimer <= 0 && !s.isInvincible) return {};
+                const newTimer = Math.max(0, s.invincibilityTimer - delta);
+                return {
+                    invincibilityTimer: newTimer,
+                    isInvincible: newTimer > 0 || s.isDashing,
+                };
+            });
         },
 
         updateDeathTimer: (delta: number) => {
             const { deathTimer } = get();
             if (deathTimer <= 0) return;
-            const newTimer = Math.max(0, deathTimer - delta);
-            // Atomic: merge the timer decrement and the status transition into one set()
-            // so we never have an intermediate frame where deathTimer=0 but status=PLAYING.
-            set(newTimer === 0
-                ? { deathTimer: 0, status: GameStatus.GAME_OVER }
-                : { deathTimer: newTimer }
-            );
+            // Atomic: merge the timer decrement and the status transition into one set(s => ...)
+            // so (a) we never have an intermediate frame where deathTimer=0 but status=PLAYING,
+            // and (b) a concurrent revive() that resets deathTimer:0 is not overwritten.
+            set(s => {
+                if (s.deathTimer <= 0) return {};
+                const newTimer = Math.max(0, s.deathTimer - delta);
+                return newTimer === 0
+                    ? { deathTimer: 0, status: GameStatus.GAME_OVER }
+                    : { deathTimer: newTimer };
+            });
         },
     };
 }

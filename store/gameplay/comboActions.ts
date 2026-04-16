@@ -33,19 +33,23 @@ export function createComboActions(set: Set, get: Get) {
         },
 
         incrementCombo: () => {
-            const current = get().combo;
-            const newCount = current + 1;
-            const newMultiplier = 1 + Math.floor(newCount / 10) * 0.5; // +0.5x every 10 hits
-
-            set({
-                combo: newCount,
-                multiplier: newMultiplier,
-                comboTimer: 3.5,
-                speedLinesActive: newCount >= 10
+            // Use set(s => ...) to avoid stale snapshot when resetCombo() fires concurrently
+            // (e.g. player dies in the same frame a combat kill is scored).
+            // Capture milestone flag outside set() so eventBus.emit stays a pure side-effect.
+            let milestoneCombo = 0;
+            set(s => {
+                const newCount = s.combo + 1;
+                const newMultiplier = 1 + Math.floor(newCount / 10) * 0.5; // +0.5x every 10 hits
+                if (newCount % 10 === 0) milestoneCombo = newCount;
+                return {
+                    combo: newCount,
+                    multiplier: newMultiplier,
+                    comboTimer: 3.5,
+                    speedLinesActive: newCount >= 10,
+                };
             });
-
-            if (newCount % 10 === 0) {
-                eventBus.emit('combat:combo_milestone', { combo: newCount });
+            if (milestoneCombo > 0) {
+                eventBus.emit('combat:combo_milestone', { combo: milestoneCombo });
             }
         },
 
@@ -60,41 +64,48 @@ export function createComboActions(set: Set, get: Get) {
         },
 
         updateCombo: (delta: number) => {
-            const state = get();
-            const hasComboTimer = state.comboTimer > 0;
-            const hasAttackTimer = state.attackTimer > 0;
-            if (!hasComboTimer && !hasAttackTimer) return;
+            // Read state inside set(s => ...) to prevent stale values when setAttack() or
+            // resetCombo() runs concurrently within the same render frame.
+            // Capture comboExpired flag outside so eventBus.emit stays a pure side-effect.
+            let didComboExpire = false;
+            set(s => {
+                const hasComboTimer = s.comboTimer > 0;
+                const hasAttackTimer = s.attackTimer > 0;
+                if (!hasComboTimer && !hasAttackTimer) return {};
 
-            const newComboTimer = hasComboTimer ? Math.max(0, state.comboTimer - delta) : state.comboTimer;
-            const newAttackTimer = hasAttackTimer ? Math.max(0, state.attackTimer - delta) : state.attackTimer;
+                const newComboTimer = hasComboTimer ? Math.max(0, s.comboTimer - delta) : s.comboTimer;
+                const newAttackTimer = hasAttackTimer ? Math.max(0, s.attackTimer - delta) : s.attackTimer;
 
-            const comboExpired = hasComboTimer && newComboTimer === 0 && state.combo > 0;
-            const attackExpired = hasAttackTimer && newAttackTimer === 0;
+                const comboExpired = hasComboTimer && newComboTimer === 0 && s.combo > 0;
+                const attackExpired = hasAttackTimer && newAttackTimer === 0;
 
-            // Single atomic set — was up to 4 separate set() calls (one per branch + resetCombo).
-            set({
-                comboTimer: newComboTimer,
-                attackTimer: newAttackTimer,
-                ...(attackExpired ? { attackState: 'none' } : {}),
-                ...(comboExpired ? { combo: 0, multiplier: 1, speedLinesActive: false } : {}),
+                if (comboExpired) didComboExpire = true;
+
+                return {
+                    comboTimer: newComboTimer,
+                    attackTimer: newAttackTimer,
+                    ...(attackExpired ? { attackState: 'none' } : {}),
+                    ...(comboExpired ? { combo: 0, multiplier: 1, speedLinesActive: false } : {}),
+                };
             });
-
-            if (comboExpired) {
+            if (didComboExpire) {
                 eventBus.emit('combat:combo_reset', undefined);
             }
         },
 
         setAttack: (attackState: 'none' | 'up' | 'down') => {
+            // UP attack animation is 300ms (0.3s); DOWN is 400ms (0.4s).
+            // Using per-direction durations prevents the hitbox from being active 100ms too long
+            // for UP attacks, which would allow hitting enemies the player is no longer attacking.
+            const timerByDirection: Record<string, number> = { up: 0.3, down: 0.4 };
             set({
                 attackState,
-                attackTimer: attackState !== 'none' ? 0.4 : 0
+                attackTimer: timerByDirection[attackState] ?? 0,
             });
-            if (attackState !== 'none') {
-                if (attackState === 'up') {
-                    eventBus.emit('combat:attack_up', undefined);
-                } else if (attackState === 'down') {
-                    eventBus.emit('combat:attack_down', undefined);
-                }
+            if (attackState === 'up') {
+                eventBus.emit('combat:attack_up', undefined);
+            } else if (attackState === 'down') {
+                eventBus.emit('combat:attack_down', undefined);
             }
         },
     };

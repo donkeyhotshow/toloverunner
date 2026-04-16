@@ -32,22 +32,26 @@ export function createPowerupActions(set: Set, get: Get) {
         },
 
         updateShieldTimer: (delta: number) => {
-            const { shieldTimer, shieldActive } = get();
-            if (!shieldActive) return;
-            const newTimer = Math.max(0, shieldTimer - delta);
-            if (newTimer === 0) {
-                // Use state callback so speedBoostActive is read from the same snapshot as the write.
-                set(s => ({ shieldTimer: 0, shieldActive: false, isImmortalityActive: s.speedBoostActive }));
-            } else {
-                set({ shieldTimer: newTimer });
-            }
+            if (!get().shieldActive) return;
+            // Compute newTimer inside set(s => ...) to prevent concurrent activateShield()
+            // calls from being silently overwritten by a stale pre-computed value.
+            set(s => {
+                if (!s.shieldActive) return {};
+                const newTimer = Math.max(0, s.shieldTimer - delta);
+                if (newTimer === 0) {
+                    return { shieldTimer: 0, shieldActive: false, isImmortalityActive: s.speedBoostActive };
+                }
+                return { shieldTimer: newTimer };
+            });
         },
 
         updateMagnetTimer: (delta: number) => {
-            const { magnetTimer, magnetActive } = get();
-            if (!magnetActive) return;
-            const newTimer = Math.max(0, magnetTimer - delta);
-            set({ magnetTimer: newTimer, magnetActive: newTimer > 0 });
+            if (!get().magnetActive) return;
+            set(s => {
+                if (!s.magnetActive) return {};
+                const newTimer = Math.max(0, s.magnetTimer - delta);
+                return { magnetTimer: newTimer, magnetActive: newTimer > 0 };
+            });
         },
     };
 }

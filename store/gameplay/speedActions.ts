@@ -121,20 +121,23 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
         },
 
         updateSpeedBoostTimer: (delta: number) => {
-            const { speedBoostTimer, speedBoostActive } = get();
-            if (!speedBoostActive) return;
-            const newTimer = Math.max(0, speedBoostTimer - delta);
-            if (newTimer === 0) {
-                set(s => ({
-                    speedBoostTimer: 0,
-                    speedBoostActive: false,
-                    isSpeedBoostActive: false,
-                    isImmortalityActive: s.shieldActive,
-                    speed: computeEffectiveSpeed(s.baseSpeed, false, s.slowEffects),
-                }));
-            } else {
-                set({ speedBoostTimer: newTimer });
-            }
+            if (!get().speedBoostActive) return;
+            // Compute newTimer inside set() so concurrent activateSpeedBoost() resets are
+            // never overwritten by a stale value read before the set() call.
+            set(s => {
+                if (!s.speedBoostActive) return {};
+                const newTimer = Math.max(0, s.speedBoostTimer - delta);
+                if (newTimer === 0) {
+                    return {
+                        speedBoostTimer: 0,
+                        speedBoostActive: false,
+                        isSpeedBoostActive: false,
+                        isImmortalityActive: s.shieldActive,
+                        speed: computeEffectiveSpeed(s.baseSpeed, false, s.slowEffects),
+                    };
+                }
+                return { speedBoostTimer: newTimer };
+            });
         },
 
         collectCoin: (points = 5) => {
@@ -142,9 +145,16 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
             // outside set() because it only grows and is never reset mid-frame.
             const gameClock = get().gameClock;
 
+            // Compute side-effect values before set() so the updater stays a pure function.
+            // Zustand (and React 18 Strict Mode) may call updaters more than once for validation;
+            // emitting events inside the updater would double-fire particles/sounds/score.
+            let emitPerfect = false;
+            let emitCollectPoints = 0;
+            let emitCollectColor = '#ffffff';
+
             set((s) => {
                 const timeSinceLastCollect = gameClock - s.lastCollectTime;
-                // Perfect timing window: 0.5 seconds (was 500ms)
+                // Perfect timing window: 0.5 seconds
                 const perfectTiming =
                     timeSinceLastCollect < 0.5 && timeSinceLastCollect > 0 && s.lastCollectTime > 0;
                 const bonus = perfectTiming ? 50 : 0;
@@ -157,16 +167,10 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
                 const newBaseSpeed = Math.min(GAMEPLAY_CONFIG.MAX_SPEED, s.baseSpeed + 0.012);
                 const newMomentum = Math.min(2.0, s.momentum + 0.012);
 
-                // Emit events after set() returns — captured here for use in the effect below.
-                // (React batching means emit after the closure is safe.)
-                if (perfectTiming) {
-                    eventBus.emit('player:perfect', { bonus });
-                }
-                eventBus.emit('player:collect', {
-                    type: 'coin',
-                    points: finalPoints,
-                    color: perfectTiming ? '#FFD700' : '#ffffff',
-                });
+                // Capture event payload for post-set emission (no side-effects in updater).
+                emitPerfect = perfectTiming;
+                emitCollectPoints = finalPoints;
+                emitCollectColor = perfectTiming ? '#FFD700' : '#ffffff';
 
                 return {
                     score: safeClamp(s.score + finalPoints, 0, GAMEPLAY_CONFIG.MAX_SCORE, s.score),
@@ -180,6 +184,16 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
                     speed: computeEffectiveSpeed(newBaseSpeed, s.speedBoostActive, s.slowEffects),
                     momentum: newMomentum,
                 };
+            });
+
+            // Emit after set() has resolved — guaranteed single emission per collectCoin() call.
+            if (emitPerfect) {
+                eventBus.emit('player:perfect', { bonus: 50 });
+            }
+            eventBus.emit('player:collect', {
+                type: 'coin',
+                points: emitCollectPoints,
+                color: emitCollectColor,
             });
         },
 
