@@ -133,6 +133,12 @@ export const useCombatSystem = () => {
 
         enemy.active = false;
 
+        // Hit-stop: 50ms freeze on UP-attack kill (flying enemies) for weight/impact feel
+        const currentAttack = useStore.getState().attackState;
+        if (currentAttack === 'up') {
+            eventBus.emit('system:hit-stop', { duration: 0.05, scale: 0.0 });
+        }
+
         // Success!
         incrementCombo();
 

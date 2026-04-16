@@ -16,7 +16,9 @@ export const ShopScreen: React.FC = () => {
             className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto select-none"
             style={{ 
                 zIndex: UI_LAYERS.MODAL_CONTENT,
-                background: 'linear-gradient(135deg, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0.8) 100%)'
+                background: 'linear-gradient(135deg, rgba(0,229,255,0.1) 0%, rgba(0,0,0,0.8) 100%)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
             }}
         >
             {/* Background overlays */}

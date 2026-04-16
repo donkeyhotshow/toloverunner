@@ -17,6 +17,7 @@ import { registerGameLoopCallback, unregisterGameLoopCallback } from '../System/
 import { getGeometryPool } from '../../infrastructure/rendering/GeometryPool';
 import { safeDispose } from '../../utils/errorHandler';
 import { eventBus } from '../../utils/eventBus';
+import { useStore } from '../../store';
 
 const shouldDisableParticles = () => {
   try {
@@ -114,7 +115,40 @@ export const ParticleSystem: React.FC = () => {
       }
     });
 
-    return () => unsubBurst();
+    // Combo milestone: gold burst with 2× count at player position
+    const unsubCombo = eventBus.on('combat:combo_milestone', ({ combo }) => {
+      const store = useStore.getState();
+      const [px, py, pz] = store.localPlayerState.position;
+      // Scale burst count with combo tier (x5=24, x10=36, x20=48…)
+      const burstCount = Math.min(24 + Math.floor(combo / 5) * 6, COUNT);
+
+      let spawned = 0;
+      for (let i = 0; i < COUNT; i++) {
+        if (spawned >= burstCount) break;
+        const p = particles.current[i];
+        if (!p || p.active) continue;
+
+        p.active = true;
+        p.life = 0;
+        p.pos.set(px, py + 0.5, pz);
+        p.vel.set(
+          (Math.random() - 0.5) * 14,
+          Math.random() * 10 + 3,
+          (Math.random() - 0.5) * 14
+        );
+        p.maxLife = 0.7;
+        p.scale = 0.7 + Math.random() * 0.5;
+        // Gold color with slight hue variation
+        p.color.setHSL(0.12 + Math.random() * 0.05, 1.0, 0.55);
+
+        spawned++;
+      }
+    });
+
+    return () => {
+      unsubBurst();
+      unsubCombo();
+    };
   }, []);
 
   const planeGeo = useMemo(() => getGeometryPool().getPlaneGeometry(0.35, 0.35), []);

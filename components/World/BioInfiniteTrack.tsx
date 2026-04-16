@@ -16,8 +16,7 @@ import * as THREE from 'three';
 import {
   roadVertexShader,
   roadFragmentShader,
-} from './shaders/roadShaders';
-import {
+} from './shaders/roadShaders';import {
   wallVertexShader,
   wallFragmentShader,
 } from './shaders/wallShaders';
@@ -142,6 +141,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
             uGlossiness: { value: 0.6 },
             uFresnelPower: { value: 3.0 },
             uWaveIntensity: { value: 0.3 },
+            uCameraPos: { value: new THREE.Vector3() },
           },
           side: THREE.DoubleSide,
           depthWrite: true,
@@ -219,7 +219,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
     // --- Game loop ---
     const elapsedRef = useRef(0);
 
-    useFrame((_, delta) => {
+    useFrame(({ camera }, delta) => {
       elapsedRef.current += delta;
       const elapsed = elapsedRef.current;
 
@@ -228,6 +228,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
       if (ru.uTime) ru.uTime.value = elapsed;
       if (ru.uOffset) ru.uOffset.value = elapsed * speed;
       if (ru.uSpeed) ru.uSpeed.value = speed;
+      if (ru.uCameraPos) ru.uCameraPos.value.copy(camera.position);
 
       const wu = wallMaterial.uniforms;
       if (wu.uTime) wu.uTime.value = elapsed;

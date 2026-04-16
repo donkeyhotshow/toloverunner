@@ -43,6 +43,8 @@ export const GameOverScreen: React.FC = () => {
             style={{
                 zIndex: UI_LAYERS.MODAL_CONTENT,
                 background: 'linear-gradient(180deg, rgba(255,23,68,0.2) 0%, rgba(0,0,0,0.9) 100%)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
             }}
         >
             {/* Background patterns */}

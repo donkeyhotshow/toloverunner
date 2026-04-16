@@ -15,11 +15,13 @@ export const roadVertexShader = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vPosition;
   varying vec3 vNormal;
+  varying vec3 vWorldPos;
 
   void main() {
     vUv = uv;
     vPosition = position;
     vNormal = normal;
+    vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
 
     // NO VERTEX DISPLACEMENT — Road must remain mathematically flat
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -37,10 +39,12 @@ export const roadFragmentShader = /* glsl */ `
   uniform float uPulseSpeed;
   uniform float uWaveIntensity;
   uniform float uStripeFrequency;
+  uniform vec3 uCameraPos;
 
   varying vec2 vUv;
   varying vec3 vPosition;
   varying vec3 vNormal;
+  varying vec3 vWorldPos;
 
   // Pseudo-random hash
   float hash(vec2 p) {
@@ -144,12 +148,14 @@ export const roadFragmentShader = /* glsl */ `
     float wetFresnel = pow(rim, 3.0) * 0.25;
     baseColor += uAccent * wetFresnel;
 
-    // --- Specular highlight (glossy reflection) ---
+    // --- Specular highlight (view-dependent wet glossy reflection) ---
     vec3 lightDir = normalize(vec3(0.3, 1.0, 0.5));
-    vec3 viewDir = vec3(0.0, 0.0, 1.0);
+    vec3 viewDir = normalize(uCameraPos - vWorldPos);
     vec3 halfVec = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(vNormal, halfVec), 0.0), 64.0) * 0.3;
-    baseColor += vec3(1.0, 0.95, 1.0) * spec;
+    float spec = pow(max(dot(vNormal, halfVec), 0.0), 96.0) * 0.5;
+    // Animated shimmer — moves along road to simulate light glancing off wet surface
+    float shimmer = 0.5 + 0.5 * sin(uTime * 0.8 + vWorldPos.z * 0.15);
+    baseColor += vec3(1.0, 0.97, 1.0) * spec * (0.7 + 0.3 * shimmer);
 
     // --- Edge darkening for depth perception ---
     float edgeX = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x);
