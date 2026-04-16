@@ -62,15 +62,17 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
         startGameplay: () => {
             debugLog("⭐ startGameplay() CALLED");
             get().clearPendingGameplayTimeouts?.();
-            const { maxLives, characterType } = get();
             const newSeed = Math.random().toString(36).substring(2, 15);
 
             get().procGen.init(newSeed);
 
-            set({
+            // Use state callback so `maxLives` and `characterType` are read from the same
+            // snapshot as the write — prevents stale values if a shop upgrade fires between
+            // the countdown completion and the gameplay start in the same event loop turn.
+            set(s => ({
                 status: GameStatus.PLAYING,
                 score: 0,
-                lives: maxLives,
+                lives: s.maxLives,
                 speed: RUN_SPEED_BASE,
                 baseSpeed: RUN_SPEED_BASE,   // reset progression speed
                 slowEffects: [],              // clear all slow effects
@@ -79,7 +81,7 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 timePlayed: 0,
                 gameClock: 0,
                 seed: newSeed,
-                localPlayerState: { ...get().localPlayerState, characterType },
+                localPlayerState: { ...s.localPlayerState, characterType: s.characterType },
                 // Reset gameplay flags
                 isImmortalityActive: false,
                 isSpeedBoostActive: false,
@@ -111,7 +113,7 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
                 // Reset TDI
                 tdi: 0,
                 visibleObstacles: 0
-            });
+            }));
         },
 
         resetGame: () => {
@@ -130,22 +132,28 @@ export const createSessionSlice: StateCreator<GameState, [], [], SessionSlice> =
         },
 
         revive: () => {
-            const { gems, status } = get();
-            if (status === GameStatus.GAME_OVER && gems >= 1) {
-                set({
+            // Fast pre-check to avoid entering set() unnecessarily.
+            if (get().status !== GameStatus.GAME_OVER || get().gems < 1) return false;
+
+            // Re-check inside set(s => ...) so a concurrent endGameSession() or another
+            // revive() call in the same frame cannot double-spend the gem.
+            let revived = false;
+            set(s => {
+                if (s.status !== GameStatus.GAME_OVER || s.gems < 1) return {};
+                revived = true;
+                return {
                     status: GameStatus.PLAYING,
                     lives: 1,
-                    gems: gems - 1,
+                    gems: s.gems - 1,
                     // Use the timer system — NOT a raw setTimeout — so updateInvincibilityTimer
                     // doesn't immediately cancel it on the next frame (when invincibilityTimer=0).
                     isInvincible: true,
                     invincibilityTimer: 2.0,
                     // Ensure deathTimer is cleared so updateDeathTimer doesn't re-trigger GAME_OVER.
                     deathTimer: 0,
-                });
-                return true;
-            }
-            return false;
+                };
+            });
+            return revived;
         },
 
         /**

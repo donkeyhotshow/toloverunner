@@ -192,11 +192,12 @@ export const useGamePhysics = () => {
                             obj.type === ObjectType.OBSTACLE_JUMP ||
                             obj.type === ObjectType.OBSTACLE_SLIDE ||
                             obj.type === ObjectType.OBSTACLE_DODGE ||
-                            // GDD: viruses, worms, bacteria and immune cells should NOT be pulled toward player
+                            // GDD: all biological enemy families should NOT be pulled toward player
                             VIRUS_TYPE_SET.has(obj.type) ||
                             WORM_TYPE_SET_GP.has(obj.type) ||
                             BACTERIUM_TYPE_SET_GP.has(obj.type) ||
-                            IMMUNE_TYPE_SET_GP.has(obj.type);
+                            IMMUNE_TYPE_SET_GP.has(obj.type) ||
+                            MEMBRANE_TYPE_SET_GP.has(obj.type);
                         if (isHarmful) continue;
 
                         const ox = obj.position[0];

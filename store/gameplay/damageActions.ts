@@ -23,7 +23,7 @@ type RegisterTimeout = (id: ReturnType<typeof setTimeout>) => void;
 export function createDamageActions(set: Set, get: Get, registerGameplayTimeout: RegisterTimeout) {
     return {
         takeDamage: (obj?: { type?: string | number }) => {
-            const { isImmortalityActive, isInvincible, lives, shieldActive, maxLives } = get();
+            const { isImmortalityActive, isInvincible, shieldActive } = get();
 
             // GDD: Viruses bypass shield — instant death
             const ignoresShield = !!obj?.type && VIRUS_TYPE_SET.has(obj.type);
@@ -42,32 +42,46 @@ export function createDamageActions(set: Set, get: Get, registerGameplayTimeout:
             }
 
             if (!ignoresShield && (isImmortalityActive || isInvincible)) return;
-            if (lives <= 0) return;
 
-            const finalLives = ignoresShield ? 0 : Math.max(0, lives - 1);
-            const willDie = finalLives <= 0;
+            // Capture outcome flags for post-set side-effects — keeps the updater pure.
+            // A sentinel of -1 means the updater bailed out (lives was already 0).
+            let hitLives = -1;
+            let willDie = false;
 
-            // Single atomic set — no intermediate state where the player is
-            // simultaneously "about to die" AND "invincible".
-            // Speed is read from the same state snapshot (s.speed) to avoid stale closure.
-            set(s => ({
-                lives: safeClamp(finalLives, 0, maxLives, 0),
-                combo: 0,
-                multiplier: 1,
-                speed: safeClamp(
-                    Math.max(GAMEPLAY_CONFIG.MIN_SPEED, s.speed * 0.75),
-                    GAMEPLAY_CONFIG.MIN_SPEED,
-                    GAMEPLAY_CONFIG.MAX_SPEED,
-                    GAMEPLAY_CONFIG.MIN_SPEED
-                ),
-                // Invincibility frames only when the player survives the hit
-                isInvincible: !willDie,
-                invincibilityTimer: willDie ? 0 : 2.5,
-                nearestEnemyDistance: 999,
-                ...(willDie ? { deathTimer: 1.0 } : {}),
-            }));
+            // finalLives and maxLives are computed INSIDE set(s => ...) from the same
+            // snapshot to prevent a double-damage race when two collisions fire in the
+            // same render frame (both would see the pre-damage `lives` value otherwise).
+            set(s => {
+                if (s.lives <= 0) return {};
+                const finalLives = ignoresShield ? 0 : Math.max(0, s.lives - 1);
+                const dying = finalLives <= 0;
 
-            eventBus.emit('player:hit', { lives: finalLives, damage: 1 });
+                // Capture for post-set emission (no side-effects inside updater).
+                hitLives = finalLives;
+                willDie = dying;
+
+                return {
+                    lives: safeClamp(finalLives, 0, s.maxLives, 0),
+                    combo: 0,
+                    multiplier: 1,
+                    speed: safeClamp(
+                        Math.max(GAMEPLAY_CONFIG.MIN_SPEED, s.speed * 0.75),
+                        GAMEPLAY_CONFIG.MIN_SPEED,
+                        GAMEPLAY_CONFIG.MAX_SPEED,
+                        GAMEPLAY_CONFIG.MIN_SPEED
+                    ),
+                    // Invincibility frames only when the player survives the hit
+                    isInvincible: !dying,
+                    invincibilityTimer: dying ? 0 : 2.5,
+                    nearestEnemyDistance: 999,
+                    ...(dying ? { deathTimer: 1.0 } : {}),
+                };
+            });
+
+            // Guard: updater returned {} because lives was already 0 — no events to fire.
+            if (hitLives < 0) return;
+
+            eventBus.emit('player:hit', { lives: hitLives, damage: 1 });
             if (willDie) {
                 eventBus.emit('player:death', { score: get().score, distance: get().distance });
             }
