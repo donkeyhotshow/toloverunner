@@ -12,6 +12,7 @@ import { useStore } from '../../store';
 import { GameStatus } from '../../types';
 
 import WorldLevelManager from './WorldLevelManager';
+import { Environment } from './Environment';
 import { PlayerController } from '../player/PlayerController';
 import CameraController from './CameraController';
 import { GameLoopRunner } from '../System/GameLoopRunner';
@@ -33,6 +34,7 @@ export const SceneController: React.FC = () => {
     <>
       <GameLoopRunner />
       {showWorld && <TunnelOnly />}
+      {showWorld && <Environment />}
       {showWorld && <PlayerController visible={true} speed={speed} />}
       {showWorld && <CameraController />}
       {showWorld && <WorldLevelManager />}
