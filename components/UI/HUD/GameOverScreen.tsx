@@ -24,11 +24,18 @@ export const GameOverScreen: React.FC = () => {
         return Number(score) > best;
     }, [score, stats?.bestScore]);
 
+    // Record the session exactly once when the game-over screen appears.
+    // Previously this was guarded by `if (isNewBestScore)`, so gamesPlayed was
+    // never incremented for non-record runs. Now we always record; endGameSession
+    // uses Math.max so bestScore is only updated when the new score exceeds it.
+    // hasRecordedRef prevents double-firing in React StrictMode and when
+    // `score` / `endGameSession` identity changes after mount.
+    const hasRecordedRef = React.useRef(false);
     useEffect(() => {
-        if (isNewBestScore) {
-            endGameSession(Number(score), 0);
-        }
-    }, [isNewBestScore, score, endGameSession]);
+        if (hasRecordedRef.current) return;
+        hasRecordedRef.current = true;
+        endGameSession(Number(score), 0);
+    }, [score, endGameSession]);
 
     return (
         <div

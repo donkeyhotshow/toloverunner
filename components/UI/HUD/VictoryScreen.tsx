@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCcw, Home, Trophy, Sparkles } from 'lucide-react';
 import { useStore } from '../../../store';
@@ -14,7 +14,13 @@ export const VictoryScreen: React.FC = () => {
     const genesCollected = useStore(s => (typeof s.genesCollected === 'number' ? s.genesCollected : 0));
     const endGameSession = useStore(s => s.endGameSession);
 
+    // Record the session exactly once when the victory screen appears.
+    // hasRecordedRef prevents double-firing in React StrictMode and when
+    // `score` / `endGameSession` identity changes after mount.
+    const hasRecordedRef = useRef(false);
     useEffect(() => {
+        if (hasRecordedRef.current) return;
+        hasRecordedRef.current = true;
         endGameSession(Number(score), 0);
     }, [score, endGameSession]);
 
