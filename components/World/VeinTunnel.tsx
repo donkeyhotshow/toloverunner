@@ -121,7 +121,7 @@ export const VeinTunnel: React.FC = () => {
         const u = material.uniforms;
         if (u.uTime) u.uTime.value = state.clock.getElapsedTime();
         if (u.uScrollOffset) u.uScrollOffset.value = totalDistance;
-        if (u.uTransitionProgress) u.uTransitionProgress.value = transitionProgress;
+        if (u.uTransitionProgress) u.uTransitionProgress.value = transitionProgress.current;
         if (u.uColor1) u.uColor1.value.copy(colors.primary);
         if (u.uColor2) u.uColor2.value.copy(colors.secondary);
         if (u.uAccent) u.uAccent.value.copy(colors.accent);
