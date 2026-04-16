@@ -240,8 +240,28 @@ class UnifiedAudioManager {
         };
         unsub(eventBus.on('player:collect', (data) => this.playSFX('coin', { volume: 0.8, pitch: 1.0 + (data.points > 100 ? 0.2 : 0) })));
         unsub(eventBus.on('player:hit', () => this.playSFX('hit', { volume: 0.9, pitch: 0.8 })));
-        unsub(eventBus.on('player:death', () => this.playSFX('gameOver', { pitch: 0.5 })));
-        unsub(eventBus.on('player:jump', () => this.playSFX('jump', { volume: 0.6 })));
+        unsub(eventBus.on('player:death', () => {
+            this.playSFX('gameOver', { pitch: 0.5 });
+            // Duck music: fade out volume and apply low-pass filter for cinematic "death" feel
+            if (this.ctx && this.musicGain && this.ctx.state !== 'closed') {
+                const t = this.ctx.currentTime;
+                this.musicGain.gain.cancelScheduledValues(t);
+                this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, t);
+                this.musicGain.gain.linearRampToValueAtTime(0.08, t + 0.8);
+            }
+            this.setMuffled(true);
+        }));
+        unsub(eventBus.on('player:jump', () => {
+            this.playSFX('jump', { volume: 0.6 });
+            // Restore music on first jump — signals player restarted
+            if (this.ctx && this.musicGain && this.ctx.state !== 'closed') {
+                const t = this.ctx.currentTime;
+                this.musicGain.gain.cancelScheduledValues(t);
+                this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, t);
+                this.musicGain.gain.linearRampToValueAtTime(this.volumeSettings.music, t + 0.4);
+            }
+            this.setMuffled(false);
+        }));
         unsub(eventBus.on('player:dash', () => this.playSFX('dash', { volume: 0.7, pitch: 1.2 })));
         unsub(eventBus.on('player:graze', () => this.playSFX('swipe', { volume: 0.4 })));
         unsub(eventBus.on('system:play-sound', (data) => {

@@ -19,6 +19,8 @@ export interface ToonSpermProps {
   animState?: React.MutableRefObject<AnimState>;
   /** Ref to landing squash intensity [0..1], decayed by PlayerController. */
   landSquash?: React.MutableRefObject<number>;
+  /** Ref to signed lateral tilt [-1..1]: negative = tilt left, positive = tilt right. */
+  lateralTilt?: React.MutableRefObject<number>;
 }
 
 export const ToonSperm: React.FC<ToonSpermProps> = ({
@@ -27,6 +29,7 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   isJumping = false,
   animState,
   landSquash,
+  lateralTilt,
 }) => {
   // Refs for animation targets
   const groupRef = useRef<Group>(null);
@@ -214,6 +217,10 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
       bodyRef.current.scale.y  += (targetScaleY  - bodyRef.current.scale.y)  * lerpFactor;
       bodyRef.current.scale.x  += (targetScaleXZ - bodyRef.current.scale.x)  * lerpFactor;
       bodyRef.current.scale.z  += (targetScaleXZ - bodyRef.current.scale.z)  * lerpFactor;
+
+      // Lateral tilt: lean into lane change direction (max ±8° ≈ 0.14 rad)
+      const tilt = (lateralTilt?.current ?? 0) * 0.14;
+      bodyRef.current.rotation.z = -tilt; // negative: move right → lean right
     }
 
     // Glow pulse

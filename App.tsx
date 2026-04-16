@@ -241,9 +241,9 @@ const AppContent: React.FC = () => {
               {/* AMBIENT PARTICLES moved to Environment.tsx */}
 
 
-              {/* 🛤️ WORLD */}
-              <ambientLight intensity={1.5} />
-              <directionalLight position={[0, 10, 5]} intensity={2} />
+              {/* 🛤️ WORLD — base lights only when Environment.tsx is not yet mounted (MENU) */}
+              {status === GameStatus.MENU && <ambientLight intensity={1.5} />}
+              {status === GameStatus.MENU && <directionalLight position={[0, 10, 5]} intensity={2} />}
 
               {/* Curved World Effect for Perfect Polish */}
               <CurvedWorldEffect />

@@ -5,6 +5,9 @@ import { useStore } from '../store';
 import { BiomeType } from '../types';
 import { BIOME_CONFIG } from '../constants';
 
+// Module-level scratch Color — reused every frame to avoid per-frame GC pressure
+const _scratchColor = new Color();
+
 export interface BiomeVisuals {
     primary: string;
     secondary: string;
@@ -18,10 +21,12 @@ export interface BiomeVisuals {
 export function useBiomeTransition() {
     const store = useStore();
     const currentBiome = (store.biome as BiomeType) || BiomeType.BIO_JUNGLE;
-    const [transitionProgress, setTransitionProgress] = useState(1);
+    // useRef instead of useState: transition progress is written every frame during a
+    // 2-second window — using state would trigger ~120 unnecessary React re-renders.
+    // Consumers read it inside useFrame closures, where the ref is always fresh.
+    const transitionProgressRef = useRef<number>(1);
     const [_prevBiome, setPrevBiome] = useState<BiomeType>(currentBiome);
     const [targetBiome, setTargetBiome] = useState<BiomeType>(currentBiome);
-    
     // Lerp colors for smooth transitions
     const colors = useRef({
         primary: new Color(BIOME_CONFIG[currentBiome].color),
@@ -35,31 +40,36 @@ export function useBiomeTransition() {
         if (newBiome === targetBiome) return;
         setPrevBiome(targetBiome);
         setTargetBiome(newBiome);
-        setTransitionProgress(0);
+        transitionProgressRef.current = 0;
         // Note: Store update happens after transition complete or immediately
         // For visual smoothness, we keep the store biome but lerp our local colors
     }, [targetBiome]);
 
     useFrame((_state, delta) => {
-        if (transitionProgress < 1) {
-            const nextProgress = Math.min(transitionProgress + delta * 0.5, 1); // 2 second transition
-            setTransitionProgress(nextProgress);
+        if (transitionProgressRef.current < 1) {
+            transitionProgressRef.current = Math.min(transitionProgressRef.current + delta * 0.5, 1); // 2 second transition
             
-            if (nextProgress >= 1) {
+            if (transitionProgressRef.current >= 1) {
                 // Finalize in store
                 useStore.setState({ biome: targetBiome });
             }
         }
 
-        // Always lerp colors towards target
+        // Always lerp colors towards target — use a single scratch Color to avoid
+        // allocating 5 × new Color() per frame (5 × 60fps = 300 GC objects/sec).
         const targetData = BIOME_CONFIG[targetBiome];
         const lerpFactor = 0.05; // Smoothing factor
         
-        colors.current.primary.lerp(new Color(targetData.color), lerpFactor);
-        colors.current.secondary.lerp(new Color(targetData.roadColor), lerpFactor);
-        colors.current.accent.lerp(new Color(targetData.accentColor), lerpFactor);
-        colors.current.fog.lerp(new Color(targetData.fogColor ?? targetData.color), lerpFactor);
-        colors.current.light.lerp(new Color(targetData.ambientColor ?? targetData.light ?? '#ffffff'), lerpFactor);
+        _scratchColor.set(targetData.color);
+        colors.current.primary.lerp(_scratchColor, lerpFactor);
+        _scratchColor.set(targetData.roadColor);
+        colors.current.secondary.lerp(_scratchColor, lerpFactor);
+        _scratchColor.set(targetData.accentColor);
+        colors.current.accent.lerp(_scratchColor, lerpFactor);
+        _scratchColor.set(targetData.fogColor ?? targetData.color);
+        colors.current.fog.lerp(_scratchColor, lerpFactor);
+        _scratchColor.set(targetData.ambientColor ?? targetData.light ?? '#ffffff');
+        colors.current.light.lerp(_scratchColor, lerpFactor);
     });
 
     // Auto-trigger biome changes every 500 units for testing/infinite feel
@@ -81,7 +91,7 @@ export function useBiomeTransition() {
 
     return {
         currentBiome: targetBiome,
-        transitionProgress,
+        transitionProgress: transitionProgressRef,
         colors: colors.current,
         biomeData: BIOME_CONFIG[targetBiome]
     };

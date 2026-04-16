@@ -203,6 +203,7 @@ export interface PlayerPhysicsState {
   dashTime: number;
   dashCooldownTime: number;
   coyoteTime: number;
+  jumpBufferTimer: number; // seconds remaining for pre-land jump buffer
   inputX: number;
   targetLane: number;
   currentLane: number;
@@ -253,6 +254,7 @@ export class EnhancedPhysicsSystem {
       dashTime: 0,
       dashCooldownTime: 0,
       coyoteTime: 0,
+      jumpBufferTimer: 0,
       inputX: 0,
       targetLane: 0,
       currentLane: 0
@@ -293,6 +295,10 @@ export class EnhancedPhysicsSystem {
     if (!this.inputJumpPressed) {
       this.inputJump = true;
       this.inputJumpPressed = true;
+    }
+    // Pre-land jump buffer: if airborne, store intent for 0.1s so landing fires it
+    if (!this.state.isGrounded) {
+      this.state.jumpBufferTimer = 0.1;
     }
   }
 
@@ -429,6 +435,19 @@ export class EnhancedPhysicsSystem {
       this.state.position.y = 0.5;
       this.state.velocity.y = 0;
       this.state.coyoteTime = this.config.jumpCoyoteTime;
+
+      // Consume jump buffer: if player pressed jump just before landing, fire immediately
+      if (this.state.jumpBufferTimer > 0) {
+        this.state.jumpBufferTimer = 0;
+        this.handleJump();
+      }
+    }
+
+    // Decay jump buffer timer
+    if (this.state.jumpBufferTimer > 0 && !this.state.isGrounded) {
+      this.state.jumpBufferTimer = Math.max(0, this.state.jumpBufferTimer - delta);
+    } else if (this.state.isGrounded) {
+      this.state.jumpBufferTimer = 0;
     }
 
     // Coyote time countdown

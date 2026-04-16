@@ -22,18 +22,19 @@ import { createComboActions } from './gameplay/comboActions';
 import { createPowerupActions } from './gameplay/powerupActions';
 import { createDamageActions } from './gameplay/damageActions';
 
-const pendingGameplayTimeouts: ReturnType<typeof setTimeout>[] = [];
-
-function registerGameplayTimeout(id: ReturnType<typeof setTimeout>): void {
-    pendingGameplayTimeouts.push(id);
-}
-
-export function clearPendingGameplayTimeouts(): void {
-    pendingGameplayTimeouts.forEach(clearTimeout);
-    pendingGameplayTimeouts.length = 0;
-}
-
 export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice> = (set, get) => {
+    // Instance-scoped timeout tracking — NOT module-level so test isolation is guaranteed.
+    const pendingGameplayTimeouts: ReturnType<typeof setTimeout>[] = [];
+
+    function registerGameplayTimeout(id: ReturnType<typeof setTimeout>): void {
+        pendingGameplayTimeouts.push(id);
+    }
+
+    function clearPendingGameplayTimeoutsLocal(): void {
+        pendingGameplayTimeouts.forEach(clearTimeout);
+        pendingGameplayTimeouts.length = 0;
+    }
+
     const speedActions = createSpeedActions(set, get, registerGameplayTimeout);
     const comboActions = createComboActions(set, get);
     const powerupActions = createPowerupActions(set, get);
@@ -128,7 +129,7 @@ export const createGameplaySlice: StateCreator<GameState, [], [], GameplaySlice>
         },
 
         // ── Timeout Management ─────────────────────────────────────────────────────
-        clearPendingGameplayTimeouts,
+        clearPendingGameplayTimeouts: clearPendingGameplayTimeoutsLocal,
         registerGameplayTimeout,
     };
 };

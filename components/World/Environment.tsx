@@ -4,7 +4,6 @@ import { MicroPlankton } from '../Effects/MicroPlankton';
 import { useStore } from '../../store';
 import { useBiomeTransition } from '../../hooks/useBiomeManager';
 import { useFrame } from '@react-three/fiber';
-import { FogMask } from './FogMask';
 
 export const Environment: React.FC = () => {
   const { colors, biomeData } = useBiomeTransition();
@@ -40,7 +39,6 @@ export const Environment: React.FC = () => {
       {/* 🌫️ DYNAMIC FOG: Dense fog for visual stability / chunk hiding */}
       <fogExp2 attach="fog" color={colors.fog} density={dynamicFogDensity} />
       <color attach="background" args={[colors.fog]} />
-      <FogMask />
 
       {/* 🩸 VEIN TUNNEL: Living Organism */}
       <VeinTunnel />

@@ -7,17 +7,18 @@ import { useStore } from '../../../store';
 import { LANE_WIDTH, SAFETY_CONFIG, PLAYER_PHYSICS } from '../../../constants';
 import { safeDeltaTime } from '../../../utils/safeMath';
 import { validateLane } from '../../../utils/laneUtils';
-import { GameObject, ObjectType, VirusTypes, WormTypes, BacteriumTypes, ImmuneTypes } from '../../../types';
+import { GameObject, ObjectType, VirusTypes, WormTypes, BacteriumTypes, ImmuneTypes, MembraneTypes } from '../../../types';
 import { gameObjectPool } from '../SharedPool';
 // import { getPerformanceManager } from '../../../infrastructure/performance/PerformanceManager'; // Unused
 import { eventBus } from '../../../utils/eventBus';
 
 /** GDD: all VirusTypes are lethal obstacles. Pre-built Set for O(1) lookup in hot collision path. */
 const VIRUS_TYPE_SET = new Set<string>(VirusTypes);
-/** Pre-built Sets for non-pickup enemy types (used in magnet exclusion and fear mechanic). */
-const WORM_TYPE_SET_GP = new Set<string>(WormTypes);
+/** Pre-built Sets for non-pickup enemy types (used in magnet exclusion, fear mechanic, and collision routing). */
+const WORM_TYPE_SET_GP      = new Set<string>(WormTypes);
 const BACTERIUM_TYPE_SET_GP = new Set<string>(BacteriumTypes);
-const IMMUNE_TYPE_SET_GP = new Set<string>(ImmuneTypes);
+const IMMUNE_TYPE_SET_GP    = new Set<string>(ImmuneTypes);
+const MEMBRANE_TYPE_SET_GP  = new Set<string>(MembraneTypes);
 
 import { useCombatSystem } from '../../Gameplay/Combat/useCombatSystem';
 
@@ -97,11 +98,12 @@ export const useGamePhysics = () => {
         const safeDelta = safeDeltaTime(delta, SAFETY_CONFIG.MAX_DELTA_TIME, 0.001);
         if (safeDelta > 0.001) {
             const currentSpeed = store.speed || 30;
-            const boost = store.speedBoostActive ? 2 : 1;
+            // `speed` from the store already includes SPEED_BOOST_FACTOR via
+            // computeEffectiveSpeed — do NOT multiply by boost again here.
             const isDashing = store.isDashing;
 
             const dashBoost = isDashing ? 2.0 : 1.0;
-            const effectiveSpeed = currentSpeed * boost * dashBoost;
+            const effectiveSpeed = currentSpeed * dashBoost;
 
             let currentPhysicsDist = totalDistanceRef.current - (safeDelta * effectiveSpeed);
 
@@ -190,11 +192,12 @@ export const useGamePhysics = () => {
                             obj.type === ObjectType.OBSTACLE_JUMP ||
                             obj.type === ObjectType.OBSTACLE_SLIDE ||
                             obj.type === ObjectType.OBSTACLE_DODGE ||
-                            // GDD: viruses, worms, bacteria and immune cells should NOT be pulled toward player
+                            // GDD: all biological enemy families should NOT be pulled toward player
                             VIRUS_TYPE_SET.has(obj.type) ||
                             WORM_TYPE_SET_GP.has(obj.type) ||
                             BACTERIUM_TYPE_SET_GP.has(obj.type) ||
-                            IMMUNE_TYPE_SET_GP.has(obj.type);
+                            IMMUNE_TYPE_SET_GP.has(obj.type) ||
+                            MEMBRANE_TYPE_SET_GP.has(obj.type);
                         if (isHarmful) continue;
 
                         const ox = obj.position[0];
@@ -242,26 +245,18 @@ export const useGamePhysics = () => {
             const obj = objects[i];
             if (!obj || !obj.active) continue;
 
-            const isHarmful = obj.type === ObjectType.OBSTACLE ||
+            // Use the same pre-built Sets as isObstacleType to guarantee fear is triggered
+            // for every enemy family (including membrane variants added in the future).
+            const isHarmful =
+                obj.type === ObjectType.OBSTACLE ||
                 obj.type === ObjectType.OBSTACLE_JUMP ||
                 obj.type === ObjectType.OBSTACLE_SLIDE ||
                 obj.type === ObjectType.OBSTACLE_DODGE ||
-                obj.type === ObjectType.GLOBUS_NORMAL ||
-                obj.type === ObjectType.GLOBUS_ANGRY ||
-                obj.type === ObjectType.GLOBUS_BOSS ||
-                obj.type === ObjectType.BACTERIA_LOW ||
-                obj.type === ObjectType.BACTERIA_MID ||
-                obj.type === ObjectType.BACTERIA_WALL ||
-                obj.type === ObjectType.BACTERIA_HAPPY ||
-                obj.type === ObjectType.VIRUS_KILLER_LOW ||
-                obj.type === ObjectType.VIRUS_KILLER_HIGH ||
-                obj.type === ObjectType.IMMUNE_PATROL ||
-                obj.type === ObjectType.MEMBRANE_WALL ||
-                // GDD: all VirusTypes/WormTypes/BacteriumTypes/ImmuneTypes trigger camera fear
                 VIRUS_TYPE_SET.has(obj.type) ||
                 WORM_TYPE_SET_GP.has(obj.type) ||
                 BACTERIUM_TYPE_SET_GP.has(obj.type) ||
-                IMMUNE_TYPE_SET_GP.has(obj.type);
+                IMMUNE_TYPE_SET_GP.has(obj.type) ||
+                MEMBRANE_TYPE_SET_GP.has(obj.type);
 
             if (isHarmful) {
                 // const objZ = obj.position[2] + totalDistanceRef.current; // Unused
@@ -294,24 +289,22 @@ export const useGamePhysics = () => {
         const collision = lastCollision as CollisionResult | null;
         if (collision && collision.hit && collision.object && collision.object.active) {
             const obj = collision.object;
+            // All biological enemy families (Worm, Bacterium, Immune, Membrane, Virus) are
+            // obstacles that deal damage — they must NOT fall through to the pickup branch.
+            // Using the same pre-built Sets as the fear mechanic and magnet exclusion ensures
+            // that any new type added to types.ts arrays is automatically covered here too.
             const isObstacleType =
                 obj.type === ObjectType.OBSTACLE ||
                 obj.type === ObjectType.OBSTACLE_JUMP ||
                 obj.type === ObjectType.OBSTACLE_SLIDE ||
                 obj.type === ObjectType.OBSTACLE_DODGE ||
-                obj.type === ObjectType.GLOBUS_NORMAL ||
-                obj.type === ObjectType.GLOBUS_ANGRY ||
-                obj.type === ObjectType.GLOBUS_BOSS ||
-                obj.type === ObjectType.BACTERIA_LOW ||
-                obj.type === ObjectType.BACTERIA_MID ||
-                obj.type === ObjectType.BACTERIA_WALL ||
-                obj.type === ObjectType.BACTERIA_HAPPY ||
-                obj.type === ObjectType.VIRUS_KILLER_LOW ||
-                obj.type === ObjectType.VIRUS_KILLER_HIGH ||
-                obj.type === ObjectType.IMMUNE_PATROL ||
-                obj.type === ObjectType.MEMBRANE_WALL ||
                 // GDD: всі типи Вірусів — смертельні перешкоди
-                VIRUS_TYPE_SET.has(obj.type);
+                VIRUS_TYPE_SET.has(obj.type) ||
+                // All remaining biological enemy families:
+                WORM_TYPE_SET_GP.has(obj.type) ||
+                BACTERIUM_TYPE_SET_GP.has(obj.type) ||
+                IMMUNE_TYPE_SET_GP.has(obj.type) ||
+                MEMBRANE_TYPE_SET_GP.has(obj.type);
 
             if (isObstacleType) {
                 const {

@@ -39,16 +39,24 @@ export const createPlayerSlice: StateCreator<GameState, [], [], PlayerSlice> = (
     setCharacterType: (t) => set({ characterType: t }),
 
     purchaseSkin: (skinId, cost) => {
-        const { gems, ownedSkins } = get();
-        if (gems >= cost && !ownedSkins.includes(skinId)) {
-            set({
-                gems: gems - cost,
-                ownedSkins: [...ownedSkins, skinId]
-            });
-            get().saveData();
-            return true;
-        }
-        return false;
+        // Fast pre-check to avoid entering set() unnecessarily.
+        if (get().gems < cost || get().ownedSkins.includes(skinId)) return false;
+
+        // Re-check inside set(s => ...) so a concurrent purchaseSkin() or buyItem() call
+        // in the same frame cannot double-spend gems. A `bought` flag captures whether
+        // the inner guard passed so we can return the correct value and skip saveData().
+        let bought = false;
+        set(s => {
+            if (s.gems < cost || s.ownedSkins.includes(skinId)) return {};
+            bought = true;
+            return {
+                gems: s.gems - cost,
+                ownedSkins: [...s.ownedSkins, skinId]
+            };
+        });
+        if (!bought) return false;
+        get().saveData();
+        return true;
     },
 
     equipSkin: (skinId) => {
@@ -60,7 +68,6 @@ export const createPlayerSlice: StateCreator<GameState, [], [], PlayerSlice> = (
     },
 
     setParticlesActive: (active, pos) => {
-        set({ particlesActive: active });
-        if (pos) set({ emitPos: pos });
+        set({ particlesActive: active, ...(pos ? { emitPos: pos } : {}) });
     }
 });

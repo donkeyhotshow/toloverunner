@@ -7,7 +7,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useStore } from '../../store';
-import { GameStatus, GameObject, ObjectType } from '../../types';
+import { GameStatus, GameObject, ObjectType, WormTypes, BacteriumTypes, VirusTypes, ImmuneTypes, MembraneTypes } from '../../types';
 import { registerGameLoopCallback, unregisterGameLoopCallback } from '../System/GameLoopRegistry';
 import { useIsPlaying } from '../../hooks/useIsPlaying';
 import { WIN_DISTANCE } from '../../constants';
@@ -18,6 +18,13 @@ import { GameLoop } from '../../core/gameLoop';
 
 const ORIGIN_RESET_THRESHOLD = 5000;
 const _GRID_SNAP = 1000; // Snap recycled positions to 0.001 precision (1/1000)
+
+/** Pre-built Sets for O(1) type classification in the hot culling + sorting loop. */
+const WORM_TYPE_SET_WLM   = new Set<string>(WormTypes);
+const BACT_TYPE_SET_WLM   = new Set<string>(BacteriumTypes);
+const VIRUS_TYPE_SET_WLM  = new Set<string>(VirusTypes);
+const IMMUNE_TYPE_SET_WLM = new Set<string>(ImmuneTypes);
+const MEMB_TYPE_SET_WLM   = new Set<string>(MembraneTypes);
 
 import { InstancedLevelObjects } from './InstancedLevelObjects';
 import { BioInfiniteTrack } from './BioInfiniteTrack';
@@ -40,7 +47,6 @@ import { getDynamicCullingManager } from '../../infrastructure/rendering/Dynamic
 export const WorldLevelManager: React.FC = React.memo(() => {
     const isPlaying = useIsPlaying();
     const speed = useStore(state => state.speed);
-    const speedBoostActive = useStore(state => state.speedBoostActive);
     const biome = useStore(state => state.biome);
 
     // Core Refs
@@ -98,9 +104,10 @@ export const WorldLevelManager: React.FC = React.memo(() => {
         const callback = (delta: number, time: number) => {
             try {
                 const safeDelta = safeDeltaTime(delta, 0.1, 0.001);
+                // `speed` from the store already includes SPEED_BOOST_FACTOR via
+                // computeEffectiveSpeed — do NOT multiply by boost again here.
                 const currentSpeed = speed || 30;
-                const boost = speedBoostActive ? 2 : 1;
-                const moveDist = currentSpeed * safeDelta * boost;
+                const moveDist = currentSpeed * safeDelta;
 
                 if (isValidNumber(moveDist) && moveDist > 0) {
                     totalDistanceRef.current += moveDist;
@@ -197,11 +204,11 @@ export const WorldLevelManager: React.FC = React.memo(() => {
                     ) {
                         specialObstaclesRef.current[specialWriteIndex++] = obj;
                     } else if (
-                        obj.type === ObjectType.GLOBUS_WORM ||
-                        obj.type === ObjectType.BACTERIA_BLOCKER ||
-                        obj.type === ObjectType.VIRUS_KILLER ||
-                        obj.type === ObjectType.IMMUNE_CELL ||
-                        obj.type === ObjectType.CELL_MEMBRANE
+                        WORM_TYPE_SET_WLM.has(obj.type) ||
+                        BACT_TYPE_SET_WLM.has(obj.type) ||
+                        VIRUS_TYPE_SET_WLM.has(obj.type) ||
+                        IMMUNE_TYPE_SET_WLM.has(obj.type) ||
+                        MEMB_TYPE_SET_WLM.has(obj.type)
                     ) {
                         biologicEnemiesRef.current[bioWriteIndex++] = obj;
                     } else {
@@ -233,7 +240,7 @@ export const WorldLevelManager: React.FC = React.memo(() => {
 
         registerGameLoopCallback('worldUpdate', callback);
         return () => unregisterGameLoopCallback('worldUpdate', callback);
-    }, [isPlaying, speed, speedBoostActive, trackSystem, updatePhysics, checkChunkGeneration]);
+    }, [isPlaying, speed, trackSystem, updatePhysics, checkChunkGeneration]);
 
     return (
         <group name="WorldLevel">

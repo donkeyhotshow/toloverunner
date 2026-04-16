@@ -84,21 +84,25 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
          * Decrement remainingTime on all active slow effects by dt (seconds).
          * Removes expired effects and recomputes speed.
          * Called once per fixed tick — deterministic, no wall-clock dependency.
+         *
+         * Fully inside set(s => ...) to avoid stale closures when slowDown() is
+         * called concurrently (e.g. two slows applied in the same render frame).
          */
         updateSlowEffects: (dt: number) => {
-            const { slowEffects } = get();
-            if (!slowEffects.length) return;
-            const updated = slowEffects.map(e => ({ ...e, remainingTime: e.remainingTime - dt }));
-            const active = updated.filter(e => e.remainingTime > 0);
-            if (active.length !== slowEffects.length) {
-                set(s => ({
-                    slowEffects: active,
-                    speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, active),
-                }));
-            } else {
-                // All still active — just update remainingTime values (no recompute needed)
-                set({ slowEffects: updated });
-            }
+            if (!get().slowEffects.length) return;
+            set(s => {
+                if (!s.slowEffects.length) return {};
+                const updated = s.slowEffects.map(e => ({ ...e, remainingTime: e.remainingTime - dt }));
+                const active = updated.filter(e => e.remainingTime > 0);
+                if (active.length !== s.slowEffects.length) {
+                    return {
+                        slowEffects: active,
+                        speed: computeEffectiveSpeed(s.baseSpeed, s.speedBoostActive, active),
+                    };
+                }
+                // All still active — just update remainingTime values (no speed recompute needed)
+                return { slowEffects: updated };
+            });
         },
 
         /**
@@ -117,62 +121,80 @@ export function createSpeedActions(set: Set, get: Get, _registerGameplayTimeout:
         },
 
         updateSpeedBoostTimer: (delta: number) => {
-            const { speedBoostTimer, speedBoostActive } = get();
-            if (!speedBoostActive) return;
-            const newTimer = Math.max(0, speedBoostTimer - delta);
-            if (newTimer === 0) {
-                set(s => ({
-                    speedBoostTimer: 0,
-                    speedBoostActive: false,
-                    isSpeedBoostActive: false,
-                    isImmortalityActive: s.shieldActive,
-                    speed: computeEffectiveSpeed(s.baseSpeed, false, s.slowEffects),
-                }));
-            } else {
-                set({ speedBoostTimer: newTimer });
-            }
+            if (!get().speedBoostActive) return;
+            // Compute newTimer inside set() so concurrent activateSpeedBoost() resets are
+            // never overwritten by a stale value read before the set() call.
+            set(s => {
+                if (!s.speedBoostActive) return {};
+                const newTimer = Math.max(0, s.speedBoostTimer - delta);
+                if (newTimer === 0) {
+                    return {
+                        speedBoostTimer: 0,
+                        speedBoostActive: false,
+                        isSpeedBoostActive: false,
+                        isImmortalityActive: s.shieldActive,
+                        speed: computeEffectiveSpeed(s.baseSpeed, false, s.slowEffects),
+                    };
+                }
+                return { speedBoostTimer: newTimer };
+            });
         },
 
         collectCoin: (points = 5) => {
-            const state = get();
-            // Use gameClock (seconds) instead of performance.now() — deterministic
-            const gameClock = state.gameClock;
-            const timeSinceLastCollect = gameClock - state.lastCollectTime;
+            // Capture gameClock once — it's monotonically increasing and safe to read
+            // outside set() because it only grows and is never reset mid-frame.
+            const gameClock = get().gameClock;
 
-            let bonus = 0;
-            let perfectTiming = false;
-            // Perfect timing window: 0.5 seconds (was 500ms)
-            if (timeSinceLastCollect < 0.5 && timeSinceLastCollect > 0 && state.lastCollectTime > 0) {
-                bonus = 50;
-                perfectTiming = true;
+            // Compute side-effect values before set() so the updater stays a pure function.
+            // Zustand (and React 18 Strict Mode) may call updaters more than once for validation;
+            // emitting events inside the updater would double-fire particles/sounds/score.
+            let emitPerfect = false;
+            let emitCollectPoints = 0;
+            let emitCollectColor = '#ffffff';
+
+            set((s) => {
+                const timeSinceLastCollect = gameClock - s.lastCollectTime;
+                // Perfect timing window: 0.5 seconds
+                const perfectTiming =
+                    timeSinceLastCollect < 0.5 && timeSinceLastCollect > 0 && s.lastCollectTime > 0;
+                const bonus = perfectTiming ? 50 : 0;
+
+                const newCombo = s.combo + 1;
+                const newMultiplier = Math.floor(newCombo / 5) + 1;
+                const finalPoints = (points + bonus) * newMultiplier;
+
+                // Coin collection nudges baseSpeed by a tiny fixed amount (not speed directly).
+                const newBaseSpeed = Math.min(GAMEPLAY_CONFIG.MAX_SPEED, s.baseSpeed + 0.012);
+                const newMomentum = Math.min(2.0, s.momentum + 0.012);
+
+                // Capture event payload for post-set emission (no side-effects in updater).
+                emitPerfect = perfectTiming;
+                emitCollectPoints = finalPoints;
+                emitCollectColor = perfectTiming ? '#FFD700' : '#ffffff';
+
+                return {
+                    score: safeClamp(s.score + finalPoints, 0, GAMEPLAY_CONFIG.MAX_SCORE, s.score),
+                    genesCollected: s.genesCollected + 5,
+                    combo: newCombo,
+                    maxCombo: Math.max(s.maxCombo, newCombo),
+                    multiplier: newMultiplier,
+                    lastCollectTime: gameClock,
+                    perfectTimingBonus: perfectTiming ? bonus : 0,
+                    baseSpeed: newBaseSpeed,
+                    speed: computeEffectiveSpeed(newBaseSpeed, s.speedBoostActive, s.slowEffects),
+                    momentum: newMomentum,
+                };
+            });
+
+            // Emit after set() has resolved — guaranteed single emission per collectCoin() call.
+            if (emitPerfect) {
+                eventBus.emit('player:perfect', { bonus: 50 });
             }
-
-            const newCombo = state.combo + 1;
-            const newMultiplier = Math.floor(newCombo / 5) + 1;
-            const finalPoints = (points + bonus) * newMultiplier;
-
-            // Coin collection nudges baseSpeed by a tiny fixed amount (not speed directly).
-            const newBaseSpeed = Math.min(GAMEPLAY_CONFIG.MAX_SPEED, state.baseSpeed + 0.012);
-            const momentumIncrement = Math.min(2.0, state.momentum + 0.012);
-
-            set((s) => ({
-                score: safeClamp(s.score + finalPoints, 0, GAMEPLAY_CONFIG.MAX_SCORE, s.score),
-                genesCollected: s.genesCollected + 5,
-                combo: newCombo,
-                maxCombo: Math.max(s.maxCombo, newCombo),
-                multiplier: newMultiplier,
-                lastCollectTime: gameClock,
-                perfectTimingBonus: perfectTiming ? bonus : 0,
-                baseSpeed: newBaseSpeed,
-                speed: computeEffectiveSpeed(newBaseSpeed, s.speedBoostActive, s.slowEffects),
-                momentum: momentumIncrement,
-            }));
-
-            eventBus.emit('player:collect', { type: 'coin', points: finalPoints, color: perfectTiming ? '#FFD700' : '#ffffff' });
-
-            if (perfectTiming) {
-                eventBus.emit('player:perfect', { bonus });
-            }
+            eventBus.emit('player:collect', {
+                type: 'coin',
+                points: emitCollectPoints,
+                color: emitCollectColor,
+            });
         },
 
         bacteriaJumpBonus: () => {

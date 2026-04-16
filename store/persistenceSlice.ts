@@ -54,19 +54,19 @@ export const createPersistenceSlice: StateCreator<GameState, [], [], Persistence
         },
 
         endGameSession: (finalScore: number, durationMs: number) => {
-            const stats = { ...get().stats };
-            stats.gamesPlayed += 1;
-            stats.totalScore += finalScore;
-            stats.totalPlayTime += durationMs;
-
-            const isNewRecord = finalScore > stats.bestScore;
-            if (isNewRecord) {
-                stats.bestScore = finalScore;
-            }
-
-            set({ stats });
-
-            // Используем новый SaveManager
+            // Use state callback so concurrent calls can't lose an increment.
+            set(s => ({
+                stats: {
+                    ...s.stats,
+                    gamesPlayed: s.stats.gamesPlayed + 1,
+                    totalScore:  s.stats.totalScore  + finalScore,
+                    totalPlayTime: s.stats.totalPlayTime + durationMs,
+                    // bestScore is always the maximum — no need to branch.
+                    bestScore: Math.max(s.stats.bestScore, finalScore),
+                }
+            }));
+            // Zustand set is synchronous — get() returns the updated stats immediately.
+            const { stats } = get();
             saveManager.updateStats({
                 gamesPlayed: stats.gamesPlayed,
                 totalScore: stats.totalScore,
@@ -121,32 +121,32 @@ export const createPersistenceSlice: StateCreator<GameState, [], [], Persistence
         },
 
         buyItem: (id, cost) => {
-            const { genesCollected } = get();
-            if (genesCollected >= cost) {
-                set({ genesCollected: genesCollected - cost });
+            // Early-exit optimisation — the actual gate is re-checked atomically inside
+            // set(s => ...) to prevent a double-spend if two buyItem() calls race.
+            if (get().genesCollected < cost) return;
 
-                if (id === 'DOUBLE_JUMP') {
-                    set({ hasDoubleJump: true });
-                    saveManager.updateUpgrades({ hasDoubleJump: true });
-                }
-                if (id === 'MAGNET_UP') {
-                    set(s => ({ magnetLevel: Math.min(5, s.magnetLevel + 1) }));
-                    saveManager.updateUpgrades({ magnetLevel: Math.min(5, get().magnetLevel) });
-                }
-                if (id === 'LUCK_UP') {
-                    set(s => ({ luckLevel: Math.min(3, s.luckLevel + 1) }));
-                    saveManager.updateUpgrades({ luckLevel: Math.min(3, get().luckLevel) });
-                }
-                if (id === 'MAX_LIFE') {
-                    set(s => ({ maxLives: s.maxLives + 1, lives: s.lives + 1 }));
-                    saveManager.updateUpgrades({ maxLives: get().maxLives });
-                }
-                if (id === 'HEAL') {
-                    set(s => ({ lives: Math.min(s.maxLives, s.lives + 1) }));
-                }
+            let bought = false;
+            set(s => {
+                if (s.genesCollected < cost) return {}; // re-check in same snapshot
+                bought = true;
+                const updates: Partial<GameState> = { genesCollected: s.genesCollected - cost };
+                if (id === 'DOUBLE_JUMP') updates.hasDoubleJump = true;
+                if (id === 'MAGNET_UP')  updates.magnetLevel = Math.min(5, s.magnetLevel + 1);
+                if (id === 'LUCK_UP')    updates.luckLevel   = Math.min(3, s.luckLevel + 1);
+                if (id === 'MAX_LIFE')   { updates.maxLives = s.maxLives + 1; updates.lives = s.lives + 1; }
+                if (id === 'HEAL')       updates.lives = Math.min(s.maxLives, s.lives + 1);
+                return updates;
+            });
 
-                get().saveData(true);
-            }
+            if (!bought) return;
+
+            // Zustand set is synchronous — get() now returns the post-purchase state.
+            const updated = get();
+            if (id === 'DOUBLE_JUMP') saveManager.updateUpgrades({ hasDoubleJump: true });
+            if (id === 'MAGNET_UP')  saveManager.updateUpgrades({ magnetLevel: updated.magnetLevel });
+            if (id === 'LUCK_UP')    saveManager.updateUpgrades({ luckLevel: updated.luckLevel });
+            if (id === 'MAX_LIFE')   saveManager.updateUpgrades({ maxLives: updated.maxLives });
+            updated.saveData(true);
         },
     };
 };

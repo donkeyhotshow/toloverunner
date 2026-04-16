@@ -45,6 +45,8 @@ export const PlayerController: React.FC<PlayerControllerProps> = ({
   const groupRef = useRef<THREE.Group>(null);
   const animStateRef = useRef<AnimState>('run');
   const landSquashRef = useRef(0); // 0 = no squash, 1 = full squash (decays to 0)
+  // lateralTiltRef: signed lateral velocity clamped [-1..1] → drives Z-rotation in ToonSperm
+  const lateralTiltRef = useRef(0);
   // isJumping for ToonSperm squash & stretch (React render, not useFrame)
   const isJumping = useStore(s => s.localPlayerState.isJumping);
 
@@ -58,6 +60,7 @@ export const PlayerController: React.FC<PlayerControllerProps> = ({
     const physX = interpolated ? interpolated.position.x : storeState.position[0];
     const physY = interpolated ? interpolated.position.y : storeState.position[1];
     const velY  = interpolated ? interpolated.velocity.y  : 0;
+    const velX  = interpolated ? interpolated.velocity.x  : 0;
     const onGround = interpolated ? interpolated.isGrounded : !storeState.isJumping;
 
     // ── Animation FSM (derived from physics, never from events) ──
@@ -78,6 +81,10 @@ export const PlayerController: React.FC<PlayerControllerProps> = ({
     if (landSquashRef.current > 0) {
       landSquashRef.current = Math.max(0, landSquashRef.current - delta * 8);
     }
+
+    // Lateral tilt: proportional to X velocity, max ±8° (0.14 rad), smoothed
+    const targetTilt = THREE.MathUtils.clamp(velX / 12.0, -1, 1);
+    lateralTiltRef.current += (targetTilt - lateralTiltRef.current) * Math.min(1, delta * 10);
 
     // ── Position: physics Y + model-only visual offset ──
     if (!groupRef.current) return;
@@ -104,6 +111,7 @@ export const PlayerController: React.FC<PlayerControllerProps> = ({
         isJumping={isJumping}
         animState={animStateRef}
         landSquash={landSquashRef}
+        lateralTilt={lateralTiltRef}
       />
     </group>
   );

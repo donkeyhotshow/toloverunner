@@ -73,6 +73,10 @@ const CameraController: React.FC = () => {
       useCameraShake.getState().shake(1.2, 0.6);
       impactLag.current = 1.0;
     });
+    const unsubCollect = eventBus.on('player:collect', () => {
+      // Micro-pulse on coin collect for tactile feedback
+      useCameraShake.getState().shake(0.08, 0.08);
+    });
     const unsubGraze = eventBus.on('player:graze', () => {
       useCameraShake.getState().shake(0.2, 0.2);
     });
@@ -97,6 +101,7 @@ const CameraController: React.FC = () => {
 
     return () => {
       unsubHit();
+      unsubCollect();
       unsubGraze();
       unsubFear();
       unsubAttackUp();
@@ -166,8 +171,12 @@ const CameraController: React.FC = () => {
       let targetFOV: number;
       if (gameState.isDashing) {
         targetFOV = CAMERA_CONFIG.DASH_FOV;
+        // High-frequency shake during dash for kinetic energy feel
+        useCameraShake.getState().shake(0.18, 0.05);
       } else if (gameState.speedBoostActive) {
         targetFOV = CAMERA_CONFIG.BOOST_FOV;
+        // Continuous micro-shake during speed boost (re-triggered each frame, short duration)
+        useCameraShake.getState().shake(0.12, 0.06);
       } else {
         const speedRange = Math.max(1, GAMEPLAY_CONFIG.MAX_SPEED - RUN_SPEED_BASE);
         const speedT = Math.min(1, Math.max(0, (gameState.speed - RUN_SPEED_BASE) / speedRange));
