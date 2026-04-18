@@ -235,8 +235,8 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   return (
     <group ref={groupRef} scale={scale} frustumCulled={false}>
       {/* GLOW EFFECTS (2 layers) */}
-      <mesh ref={glowOuterRef} geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} matrixAutoUpdate={false} />
-      <mesh ref={glowInnerRef} geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} matrixAutoUpdate={false} />
+      <mesh ref={glowOuterRef} geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
+      <mesh ref={glowInnerRef} geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
 
       {/* BODY GROUP (squash/stretch target) */}
       <group ref={bodyRef} position={[0, 0, 0]}>
