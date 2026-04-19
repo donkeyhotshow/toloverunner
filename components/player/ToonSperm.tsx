@@ -191,20 +191,23 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
 
   return (
     <group ref={groupRef} scale={scale} frustumCulled={false}>
-      {/* BODY GROUP */}
-      <group ref={bodyRef}>
+      {/* GLOW EFFECTS (2 layers) */}
+      <mesh ref={glowOuterRef} geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
+      <mesh ref={glowInnerRef} geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
 
-        {/* HEAD — white sphere with black outline */}
-        <mesh ref={headRef} geometry={headGeo} material={bodyMat} position={[0, 0.0, -0.05]} frustumCulled={false}>
+      {/* BODY GROUP (squash/stretch target) */}
+      <group ref={bodyRef} position={[0, 0, 0]}>
+        {/* HEAD */}
+        <mesh ref={headRef} geometry={headGeo} material={bodyMat} position={[0, 0.1, -0.05]} frustumCulled={false}>
+          {/* NUCLEUS (inside head) */}
+          <mesh ref={nucleusRef} geometry={nucleusGeo} material={nucleusMat} position={[0, 0.04, 0]} frustumCulled={false} />
 
-          {/* Black outline */}
-          <mesh geometry={headOutlineGeo} material={outlineMat} scale={[1.10, 1.10, 1.10]} frustumCulled={false} />
-
-          {/* Left eye */}
-          <group position={[-0.20, 0.15, 0.40]}>
-            <mesh geometry={eyeGeo} material={eyeWhiteMat} frustumCulled={false}>
-              <mesh geometry={pupilGeo} material={eyeBlackMat} position={[0.01, -0.015, 0.06]} frustumCulled={false} />
-              <mesh geometry={hlGeo} material={eyeHlMat} position={[-0.025, 0.035, 0.08]} frustumCulled={false} />
+          {/* EYES */}
+          {/* Left Eye */}
+          <group position={[-0.19, 0.14, 0.38]}>
+            <mesh geometry={eyeGeo} material={eyeWhiteMat} frustumCulled={false} matrixAutoUpdate={false}>
+              <mesh geometry={pupilGeo} material={eyeBlackMat} position={[0.01, -0.01, 0.04]} frustumCulled={false} matrixAutoUpdate={false} />
+              <mesh geometry={hlGeo} material={eyeHlMat} position={[-0.02, 0.03, 0.07]} frustumCulled={false} matrixAutoUpdate={false} />
             </mesh>
           </group>
 

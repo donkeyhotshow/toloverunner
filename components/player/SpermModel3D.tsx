@@ -240,22 +240,23 @@ export const SpermModel3D: React.FC<SpermModel3DProps> = React.memo(({
                         const segmentPhase = tailAnimation.current.phase + index * MODEL_CONSTANTS.TAIL_PHASE_PER_SEGMENT;
                         const waveOffset = Math.sin(segmentPhase) * (tailAnimation.current.amplitude / MODEL_CONSTANTS.TAIL_WAVE_DIVISOR);
 
-                        // 🔥 FIX: Add to initial position instead of overwrite? 
-                        // Assuming segments are initially at y=0, z=0 in local space
-                        // We modify Y and Rotation Z usually for swimming
-
-                        // Use local buffer if needed, but simple assignment is fine IF model is flat
-                        segment.position.x = waveOffset;
+                        // Apply wave animation to Y position (vertical swimming motion)
+                        // and Z rotation for natural tail wave effect
+                        segment.position.y = waveOffset;
                         segment.rotation.z = waveOffset * MODEL_CONSTANTS.TAIL_ROTATION_MULTIPLIER;
                     }
                 });
             }
 
             // === GOD MODE EFFECTS ===
-            if (isGodMode && materials.cheekMaterial) {
+            if (isGodMode && headRef.current) {
                 const godModeIntensity = Math.sin(time * MODEL_CONSTANTS.GOD_MODE_FREQUENCY) * MODEL_CONSTANTS.GOD_MODE_AMPLITUDE + MODEL_CONSTANTS.GOD_MODE_BASE_INTENSITY;
-                materials.cheekMaterial.emissiveIntensity = godModeIntensity;
-                materials.cheekMaterial.emissive.setHex(0x00FFFF);
+                // Apply God Mode glow to head material
+                const headMaterial = headRef.current.material as MeshToonMaterial;
+                if (headMaterial && 'emissiveIntensity' in headMaterial) {
+                    headMaterial.emissiveIntensity = godModeIntensity;
+                    headMaterial.emissive.setHex(0x00FFFF);
+                }
             }
 
             // === BODY BOBBING ===
