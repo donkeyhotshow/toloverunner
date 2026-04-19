@@ -38,7 +38,7 @@ export const roadFragmentShader = /* glsl */ `
   uniform vec3 uAccent;
   uniform float uPulseSpeed;
   uniform float uWaveIntensity;
-  uniform float uStripeFrequency;
+  uniform float uStripeFreq;
   uniform vec3 uCameraPos;
 
   varying vec2 vUv;
@@ -110,9 +110,9 @@ export const roadFragmentShader = /* glsl */ `
     uv.y += scrollY * 0.001;
 
     // --- Longitudinal stripes (organic movement feel) ---
-    float wave = sin(uv.y * uStripeFrequency * 3.14159 + uTime * 0.5) * uWaveIntensity * 0.02;
-    float stripe = step(0.5, fract((uv.y + wave) * uStripeFrequency));
-    float stripe2 = step(0.5, fract((uv.y * 1.5 + wave * 1.3 + 0.25) * uStripeFrequency));
+    float wave = sin(uv.y * uStripeFreq * 3.14159 + uTime * 0.5) * uWaveIntensity * 0.02;
+    float stripe = step(0.5, fract((uv.y + wave) * uStripeFreq));
+    float stripe2 = step(0.5, fract((uv.y * 1.5 + wave * 1.3 + 0.25) * uStripeFreq));
 
     // --- Cellular noise for biological texture ---
     float cells = cellular(uv * 12.0);
@@ -183,7 +183,7 @@ export const roadFragmentShaderMobile = /* glsl */ `
   uniform vec3 uAccent;
   uniform float uPulseSpeed;
   uniform float uWaveIntensity;
-  uniform float uStripeFrequency;
+  uniform float uStripeFreq;
 
   varying vec2 vUv;
 
@@ -197,8 +197,8 @@ export const roadFragmentShaderMobile = /* glsl */ `
     uv.y += scrollY * 0.001;
 
     // Simple stripe — no cellular, no fbm
-    float wave = sin(uv.y * uStripeFrequency * 3.14159 + uTime * 0.5) * uWaveIntensity * 0.02;
-    float stripe = step(0.5, fract((uv.y + wave) * uStripeFrequency));
+    float wave = sin(uv.y * uStripeFreq * 3.14159 + uTime * 0.5) * uWaveIntensity * 0.02;
+    float stripe = step(0.5, fract((uv.y + wave) * uStripeFreq));
 
     float pulse = sin(uTime * uPulseSpeed) * 0.075 + 0.925;
 

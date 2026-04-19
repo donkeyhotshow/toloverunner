@@ -1,27 +1,20 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import {
-  CapsuleGeometry,
-  SphereGeometry,
-  MeshToonMaterial,
-  MeshBasicMaterial,
-  Mesh,
-  Group,
-  BackSide,
-} from 'three';
+import * as THREE from 'three';
 import type { AnimState } from './PlayerController';
 
 export interface ToonSpermProps {
   speed?: number;
   scale?: number;
   isJumping?: boolean;
-  /** Ref to current animation state (FSM), driven by physics. */
   animState?: React.MutableRefObject<AnimState>;
-  /** Ref to landing squash intensity [0..1], decayed by PlayerController. */
   landSquash?: React.MutableRefObject<number>;
-  /** Ref to signed lateral tilt [-1..1]: negative = tilt left, positive = tilt right. */
   lateralTilt?: React.MutableRefObject<number>;
 }
+
+const TAIL_COUNT = 18;
+const SEG_SPACING = 0.19;
+const HIST_SIZE = 120;
 
 export const ToonSperm: React.FC<ToonSpermProps> = ({
   speed = 1,
@@ -31,207 +24,171 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   landSquash,
   lateralTilt,
 }) => {
-  // Refs for animation targets
-  const groupRef = useRef<Group>(null);
-  const headRef = useRef<Mesh>(null);
-  const bodyRef = useRef<Group>(null);
-  const tailRef = useRef<Group>(null);
-  const nucleusRef = useRef<Mesh>(null);
-  const glowOuterRef = useRef<Mesh>(null);
-  const glowInnerRef = useRef<Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const bodyRef = useRef<THREE.Group>(null);
+  const headRef = useRef<THREE.Mesh>(null);
+  const tailGroupRef = useRef<THREE.Group>(null);
+  const tailSegRefs = useRef<(THREE.Mesh | null)[]>(Array(TAIL_COUNT).fill(null));
 
-   // ─── GEOMETRIES (memoized) ───
-   const headGeo = useMemo(() => new SphereGeometry(0.5, 32, 32), []);
+  // History buffer for chain-follow tail
+  const xHistRef = useRef(new Float32Array(HIST_SIZE));
+  const yHistRef = useRef(new Float32Array(HIST_SIZE));
+  const histPtrRef = useRef(0);
 
-  const bodyGeo = useMemo(
-    () => new SphereGeometry(0.4, 24, 24),
+  // ── GEOMETRIES ──
+  const headGeo = useMemo(() => new THREE.SphereGeometry(0.52, 32, 32), []);
+  const headOutlineGeo = useMemo(() => new THREE.SphereGeometry(0.52, 32, 32), []);
+  const eyeGeo = useMemo(() => new THREE.SphereGeometry(0.09, 16, 16), []);
+  const pupilGeo = useMemo(() => new THREE.SphereGeometry(0.048, 10, 10), []);
+  const hlGeo = useMemo(() => new THREE.SphereGeometry(0.022, 8, 8), []);
+  // Tail segments — round spheres, tapered
+  const tailGeos = useMemo(
+    () =>
+      Array.from({ length: TAIL_COUNT }, (_, i) => {
+        const r = 0.18 * Math.pow(0.88, i);
+        return new THREE.SphereGeometry(r, 14, 10);
+      }),
     []
   );
 
-  const nucleusGeo = useMemo(
-    () => new SphereGeometry(0.18, 16, 16),
-    []
-  );
-
-  const eyeGeo = useMemo(
-    () => new SphereGeometry(0.075, 16, 16),
-    []
-  );
-
-  const pupilGeo = useMemo(
-    () => new SphereGeometry(0.038, 8, 8),
-    []
-  );
-
-  const hlGeo = useMemo(
-    () => new SphereGeometry(0.018, 6, 6),
-    []
-  );
-
-  const tailSegmentGeo = useMemo(
-    () => new CapsuleGeometry(0.055, 0.14, 4, 8),
-    []
-  );
-
-  const outerGlowGeo = useMemo(
-    () => new SphereGeometry(0.70, 24, 24),
-    []
-  );
-
-  const innerGlowGeo = useMemo(
-    () => new SphereGeometry(0.54, 24, 24),
-    []
-  );
-
-  // ─── MATERIALS (memoized) ───
+  // ── MATERIALS ──
+  // White toon body
   const bodyMat = useMemo(
     () =>
-      new MeshToonMaterial({
-        color: '#F5F5FF',
-        emissive: '#9999EE',
-        emissiveIntensity: 0.3,
+      new THREE.MeshToonMaterial({
+        color: '#FFFFFF',
+        emissive: '#DDDDFF',
+        emissiveIntensity: 0.05,
       }),
     []
   );
 
-  const nucleusMat = useMemo(
+  // Black outline — BackSide, scale up slightly
+  const outlineMat = useMemo(
     () =>
-      new MeshToonMaterial({
-        color: '#CC99FF',
-        emissive: '#AA55FF',
-        emissiveIntensity: 0.4,
-        transparent: true,
-        opacity: 0.7,
+      new THREE.MeshBasicMaterial({
+        color: '#000000',
+        side: THREE.BackSide,
       }),
     []
   );
 
-  const eyeWhiteMat = useMemo(
-    () => new MeshBasicMaterial({ color: '#FFFFFF' }),
-    []
-  );
+  const eyeWhiteMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#FFFFFF' }), []);
+  const eyeBlackMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#111111' }), []);
+  const eyeHlMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#FFFFFF' }), []);
 
-  const eyeBlackMat = useMemo(
-    () => new MeshBasicMaterial({ color: '#111111' }),
-    []
-  );
-
-  const eyeHlMat = useMemo(
-    () => new MeshBasicMaterial({ color: '#FFFFFF' }),
-    []
-  );
-
+  // Tail material — white, matching body
   const tailMat = useMemo(
     () =>
-      new MeshToonMaterial({
-        color: '#E0E0FF',
-        emissive: '#7777CC',
-        emissiveIntensity: 0.2,
+      new THREE.MeshToonMaterial({
+        color: '#FFFFFF',
+        emissive: '#CCCCFF',
+        emissiveIntensity: 0.04,
       }),
     []
   );
 
-  const outerGlowMat = useMemo(
-    () =>
-      new MeshBasicMaterial({
-        color: '#6D28D9',
-        transparent: true,
-        opacity: 0.20,
-        side: BackSide,
-        depthWrite: false,
-      }),
-    []
-  );
-
-  const innerGlowMat = useMemo(
-    () =>
-      new MeshBasicMaterial({
-        color: '#A78BFA',
-        transparent: true,
-        opacity: 0.12,
-        side: BackSide,
-        depthWrite: false,
-      }),
-    []
-  );
-
-  // ─── ANIMATION LOOP ───
+  // ── ANIMATION LOOP ──
   useFrame(({ clock }) => {
-    const time = clock.elapsedTime * speed;
+    const t = clock.elapsedTime;
+    const spd = Math.max(speed, 0.5);
 
-    // Head animation — subtle bob and rotation (amplitude clamped)
+    // Push current lateral offset into history
+    const lx = (lateralTilt?.current ?? 0);
+    const ptr = (histPtrRef.current + 1) % HIST_SIZE;
+    histPtrRef.current = ptr;
+    xHistRef.current[ptr] = lx;
+    // Vertical bob of head
+    const headBob = Math.sin(t * 2.2 * spd) * 0.04;
+    yHistRef.current[ptr] = headBob;
+
+    // Head gentle bob
     if (headRef.current) {
-      headRef.current.rotation.z = Math.sin(time * 2.5) * 0.06;
-      headRef.current.position.y = 0.1 + Math.sin(time * 1.8) * 0.03;
+      headRef.current.position.y = 0.0 + headBob;
+      headRef.current.rotation.z = Math.sin(t * 2.0 * spd) * 0.05;
     }
 
-    // Nucleus pulse animation — drives emissive intensity
-    if (nucleusRef.current) {
-      const pulse = Math.sin(time * 5) * 0.5 + 0.5; // 0-1 range
-      const pulseScale = 0.92 + pulse * 0.08;
-      nucleusRef.current.scale.setScalar(pulseScale);
-      // Emissive pulse tied to scale for visual cohesion
-      (nucleusMat as MeshToonMaterial).emissiveIntensity = 0.3 + pulse * 0.3;
-    }
-
-    // Body emissive pulse — subtle glow breathing
-    const bodyPulse = Math.sin(time * 3) * 0.5 + 0.5;
-    (bodyMat as MeshToonMaterial).emissiveIntensity = 0.2 + bodyPulse * 0.15;
-
-    // Tail snake-wave animation (14 segments)
-    if (tailRef.current) {
-      const children = tailRef.current.children;
-      for (let i = 0; i < children.length; i++) {
-        const mesh = children[i] as Mesh;
-        mesh.rotation.z = Math.sin(time * 9 + i * 0.7) * (0.35 + i * 0.04);
-        mesh.rotation.x = Math.PI / 2 + Math.cos(time * 6 + i * 0.5) * 0.12;
-      }
-    }
-
-    // Squash & stretch driven by animation FSM (physics-derived)
+    // Squash & stretch on body group
     if (bodyRef.current) {
       const anim = animState?.current ?? (isJumping ? 'jump' : 'run');
       const squeeze = landSquash?.current ?? 0;
 
-      let targetScaleY: number;
-      let targetScaleXZ: number;
+      let targetScaleY = 1.0;
+      let targetScaleXZ = 1.0;
 
       if (anim === 'jump') {
-        // Stretch vertically on the way up
-        targetScaleY = 1.35;
-        targetScaleXZ = 0.75;
+        targetScaleY = 1.3;
+        targetScaleXZ = 0.8;
       } else if (anim === 'fall') {
-        // Slight squash as falling speed builds
-        targetScaleY = 0.9;
-        targetScaleXZ = 1.1;
+        targetScaleY = 0.92;
+        targetScaleXZ = 1.08;
       } else if (anim === 'land' && squeeze > 0) {
-        // Hard squash on landing, proportional to squash intensity
-        targetScaleY = 1.0 - squeeze * 0.45;   // 0.55 at peak
-        targetScaleXZ = 1.0 + squeeze * 0.50;  // 1.5 at peak
-      } else {
-        targetScaleY = 1.0;
-        targetScaleXZ = 1.0;
+        targetScaleY = 1.0 - squeeze * 0.4;
+        targetScaleXZ = 1.0 + squeeze * 0.45;
       }
 
-      const lerpFactor = anim === 'land' ? 0.25 : 0.12;
-      bodyRef.current.scale.y  += (targetScaleY  - bodyRef.current.scale.y)  * lerpFactor;
-      bodyRef.current.scale.x  += (targetScaleXZ - bodyRef.current.scale.x)  * lerpFactor;
-      bodyRef.current.scale.z  += (targetScaleXZ - bodyRef.current.scale.z)  * lerpFactor;
+      const lerpF = anim === 'land' ? 0.25 : 0.12;
+      bodyRef.current.scale.y += (targetScaleY - bodyRef.current.scale.y) * lerpF;
+      bodyRef.current.scale.x += (targetScaleXZ - bodyRef.current.scale.x) * lerpF;
+      bodyRef.current.scale.z += (targetScaleXZ - bodyRef.current.scale.z) * lerpF;
 
-      // Lateral tilt: lean into lane change direction (max ±8° ≈ 0.14 rad)
-      const tilt = (lateralTilt?.current ?? 0) * 0.14;
-      bodyRef.current.rotation.z = -tilt; // negative: move right → lean right
+      // Lean into lateral movement
+      const tilt = lx * 0.13;
+      bodyRef.current.rotation.z = -tilt;
     }
 
-    // Glow pulse
-    if (glowOuterRef.current && glowInnerRef.current) {
-      const glowPulse = 0.15 + Math.sin(time * 3) * 0.05;
-      (outerGlowMat as MeshBasicMaterial).opacity = glowPulse + 0.05;
-      (innerGlowMat as MeshBasicMaterial).opacity = glowPulse * 0.8;
+    // ── TAIL CHAIN FOLLOW ──
+    // Each segment reads from history with increasing delay
+    // This makes the tail "follow behind" the head with lag
+    if (tailGroupRef.current) {
+      let prevX = 0;
+      let prevY = 0;
+      let prevZ = 0;
+
+      for (let i = 0; i < TAIL_COUNT; i++) {
+        const seg = tailSegRefs.current[i];
+        if (!seg) continue;
+
+        // How many frames behind: each segment is 5 frames behind the previous
+        const delay = (i + 1) * 5;
+        const histI = ((ptr - delay) % HIST_SIZE + HIST_SIZE) % HIST_SIZE;
+        const sampledLX = xHistRef.current[histI];
+        const sampledBob = yHistRef.current[histI];
+
+        // Convert lateral offset to X displacement (scaled by how far back)
+        const relX = (sampledLX - lx) * 1.4;
+        const relY = sampledBob * (1 - i * 0.05);
+
+        // Position: extend behind head (+Z = toward camera)
+        const segZ = 0.35 + i * SEG_SPACING;
+        const segX = relX;
+        const segY = relY;
+
+        seg.position.set(segX, segY, segZ);
+
+        // Rotate each segment to point TOWARD the previous segment
+        // (creates smooth curved spine)
+        if (i === 0) {
+          const dx = segX - 0;
+          const dy = segY - (headRef.current?.position.y ?? 0);
+          const dz = segZ - 0;
+          seg.rotation.z = Math.atan2(dx, dz) * 0.6;
+          seg.rotation.x = Math.atan2(dy, dz) * 0.6 + Math.PI / 2;
+        } else {
+          const dx = segX - prevX;
+          const dy = segY - prevY;
+          const dz = segZ - prevZ;
+          seg.rotation.z = Math.atan2(dx, dz) * 0.8;
+          seg.rotation.x = Math.atan2(dy, dz) * 0.8 + Math.PI / 2;
+        }
+
+        prevX = segX;
+        prevY = segY;
+        prevZ = segZ;
+      }
     }
   });
 
-  // ─── RENDER ───
   return (
     <group ref={groupRef} scale={scale} frustumCulled={false}>
       {/* GLOW EFFECTS (2 layers) */}
@@ -253,35 +210,37 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
               <mesh geometry={hlGeo} material={eyeHlMat} position={[-0.02, 0.03, 0.07]} frustumCulled={false} matrixAutoUpdate={false} />
             </mesh>
           </group>
-          {/* Right Eye */}
-          <group position={[0.19, 0.14, 0.38]}>
-            <mesh geometry={eyeGeo} material={eyeWhiteMat} frustumCulled={false} matrixAutoUpdate={false}>
-              <mesh geometry={pupilGeo} material={eyeBlackMat} position={[0.01, -0.01, 0.04]} frustumCulled={false} matrixAutoUpdate={false} />
-              <mesh geometry={hlGeo} material={eyeHlMat} position={[-0.02, 0.03, 0.07]} frustumCulled={false} matrixAutoUpdate={false} />
+
+          {/* Right eye */}
+          <group position={[0.20, 0.15, 0.40]}>
+            <mesh geometry={eyeGeo} material={eyeWhiteMat} frustumCulled={false}>
+              <mesh geometry={pupilGeo} material={eyeBlackMat} position={[0.01, -0.015, 0.06]} frustumCulled={false} />
+              <mesh geometry={hlGeo} material={eyeHlMat} position={[-0.025, 0.035, 0.08]} frustumCulled={false} />
             </mesh>
           </group>
         </mesh>
 
-        {/* BODY SPHERE */}
-        <mesh geometry={bodyGeo} material={bodyMat} position={[0, -0.3, 0]} frustumCulled={false} matrixAutoUpdate={false} />
       </group>
 
-      {/* TAIL (14 segments extending +Z toward camera) */}
-      <group ref={tailRef} position={[0, 0.1, 0]}>
-        {Array.from({ length: 14 }, (_, i) => {
-          const taper = Math.pow(0.87, i);
-          return (
+      {/* TAIL — chain-following segments */}
+      <group ref={tailGroupRef} position={[0, 0, 0]}>
+        {Array.from({ length: TAIL_COUNT }, (_, i) => (
+          <mesh
+            key={i}
+            ref={(el) => { tailSegRefs.current[i] = el; }}
+            geometry={tailGeos[i]}
+            material={tailMat}
+            frustumCulled={false}
+          >
+            {/* Outline on each tail segment */}
             <mesh
-              key={i}
-              geometry={tailSegmentGeo}
-              material={tailMat}
-              position={[0, 0, 0.50 + i * 0.17]}
-              rotation={[Math.PI / 2, 0, 0]}
-              scale={[taper, taper, taper]}
+              geometry={tailGeos[i]}
+              material={outlineMat}
+              scale={[1.15, 1.15, 1.15]}
               frustumCulled={false}
             />
-          );
-        })}
+          </mesh>
+        ))}
       </group>
     </group>
   );
