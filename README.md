@@ -6,7 +6,7 @@
 
 ## 🎮 AAA-Level 3D Endless Runner Game
 
-**ToLOVERunner** — enterprise-grade 3D endless runner, где игрок управляет сперматозоидом в высокотехнологичной гонке. Современная архитектура, оптимизированная производительность и премиум пользовательский опыт.
+**ToLOVERunner** — динамичный 3D endless runner на React + Three.js, где игрок уклоняется от препятствий, набирает комбо и развивает высокий темп прохождения. Современная архитектура, оптимизированная производительность и премиум пользовательский опыт.
 
 ### 🌟 **Release Highlights v2.4.1**
 - ✅ **Three.js/R3F Bug Fixes** — 5 багов устранено (visual, perf, correctness, build)
@@ -349,5 +349,4 @@ npm run test:e2e          # E2E тесты (Playwright)
 Apache-2.0
 
 ---
-
 
