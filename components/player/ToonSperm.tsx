@@ -41,6 +41,11 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   const eyeGeo = useMemo(() => new THREE.SphereGeometry(0.09, 16, 16), []);
   const pupilGeo = useMemo(() => new THREE.SphereGeometry(0.048, 10, 10), []);
   const hlGeo = useMemo(() => new THREE.SphereGeometry(0.022, 8, 8), []);
+  // Nucleus inside the head
+  const nucleusGeo = useMemo(() => new THREE.SphereGeometry(0.22, 20, 20), []);
+  // Glow layers around the head
+  const outerGlowGeo = useMemo(() => new THREE.SphereGeometry(0.78, 24, 24), []);
+  const innerGlowGeo = useMemo(() => new THREE.SphereGeometry(0.62, 24, 24), []);
   // Tail segments — round spheres, tapered
   const tailGeos = useMemo(
     () =>
@@ -76,6 +81,43 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   const eyeWhiteMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#FFFFFF' }), []);
   const eyeBlackMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#111111' }), []);
   const eyeHlMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#FFFFFF' }), []);
+
+  // Nucleus — subtle bluish core
+  const nucleusMat = useMemo(
+    () =>
+      new THREE.MeshToonMaterial({
+        color: '#BFC8FF',
+        emissive: '#8899FF',
+        emissiveIntensity: 0.25,
+      }),
+    []
+  );
+
+  // Glow layers — additive, transparent, BackSide so they read as a halo
+  const outerGlowMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: '#AEE3FF',
+        transparent: true,
+        opacity: 0.12,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    []
+  );
+  const innerGlowMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: '#DDEEFF',
+        transparent: true,
+        opacity: 0.2,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    []
+  );
 
   // Tail material — white, matching body
   const tailMat = useMemo(
@@ -152,8 +194,8 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
         // How many frames behind: each segment is 5 frames behind the previous
         const delay = (i + 1) * 5;
         const histI = ((ptr - delay) % HIST_SIZE + HIST_SIZE) % HIST_SIZE;
-        const sampledLX = xHistRef.current[histI];
-        const sampledBob = yHistRef.current[histI];
+        const sampledLX = xHistRef.current[histI] ?? 0;
+        const sampledBob = yHistRef.current[histI] ?? 0;
 
         // Convert lateral offset to X displacement (scaled by how far back)
         const relX = (sampledLX - lx) * 1.4;
@@ -192,15 +234,18 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   return (
     <group ref={groupRef} scale={scale} frustumCulled={false}>
       {/* GLOW EFFECTS (2 layers) */}
-      <mesh ref={glowOuterRef} geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
-      <mesh ref={glowInnerRef} geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
+      <mesh geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
+      <mesh geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
 
       {/* BODY GROUP (squash/stretch target) */}
       <group ref={bodyRef} position={[0, 0, 0]}>
         {/* HEAD */}
         <mesh ref={headRef} geometry={headGeo} material={bodyMat} position={[0, 0.1, -0.05]} frustumCulled={false}>
+          {/* HEAD OUTLINE (BackSide, scaled up) */}
+          <mesh geometry={headOutlineGeo} material={outlineMat} scale={[1.08, 1.08, 1.08]} frustumCulled={false} />
+
           {/* NUCLEUS (inside head) */}
-          <mesh ref={nucleusRef} geometry={nucleusGeo} material={nucleusMat} position={[0, 0.04, 0]} frustumCulled={false} />
+          <mesh geometry={nucleusGeo} material={nucleusMat} position={[0, 0.04, 0]} frustumCulled={false} />
 
           {/* EYES */}
           {/* Left Eye */}
