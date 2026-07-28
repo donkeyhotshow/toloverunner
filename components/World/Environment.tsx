@@ -1,5 +1,4 @@
 import React, { useRef } from 'react';
-import { VeinTunnel } from './VeinTunnel'; 
 import { MicroPlankton } from '../Effects/MicroPlankton';
 import { useStore } from '../../store';
 import { useBiomeTransition } from '../../hooks/useBiomeManager';
@@ -39,9 +38,6 @@ export const Environment: React.FC = () => {
       {/* 🌫️ DYNAMIC FOG: Dense fog for visual stability / chunk hiding */}
       <fogExp2 attach="fog" color={colors.fog} density={dynamicFogDensity} />
       <color attach="background" args={[colors.fog]} />
-
-      {/* 🩸 VEIN TUNNEL: Living Organism */}
-      <VeinTunnel />
 
       {/* 🌫️ LIVING PARTICLES: Depth and Speed */}
       <MicroPlankton />

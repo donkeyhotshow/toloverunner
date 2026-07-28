@@ -60,12 +60,13 @@ export const wallFragmentShader = /* glsl */ `
 
   void main() {
     vec2 uv = vUv;
-    float scrollY = mod(uOffset * 0.003, 100.0);
-    uv.y += scrollY * 0.01;
+    // uv.x runs along the track length; scroll folds along travel direction
+    float scrollX = mod(uOffset * 0.003, 100.0);
+    uv.x += scrollX * 0.01;
 
-    // === INTESTINAL HORIZONTAL FOLDS ===
+    // === INTESTINAL RING FOLDS (repeat along the track) ===
     float foldFreq = 10.0;
-    float fv = mod(uv.y * foldFreq, 1.0);
+    float fv = mod(uv.x * foldFreq, 1.0);
     float foldBulge = sin(fv * 3.14159);        // 0→1→0 per fold
     float foldBulge2 = pow(foldBulge, 1.5);      // sharper peaks
     float groove = 1.0 - smoothstep(0.0, 0.12, fv) * smoothstep(1.0, 0.88, fv);
