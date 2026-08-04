@@ -87,6 +87,16 @@ export class PhysicsStabilizer {
             this.totalPhysicsUpdates++;
         }
 
+        // B-05: If the accumulator was too small to trigger any substep this frame
+        // (common at high FPS or after a pause), previousState still holds the value
+        // from two or more frames ago.  Interpolation between a stale previousState
+        // and currentState produces a visible 1-2 frame "freeze" at the old position.
+        // Fix: when 0 substeps ran, advance previousState to equal currentState so that
+        // getInterpolatedState() returns currentState regardless of alpha.
+        if (this.physicsUpdatesThisFrame === 0 && this.currentState) {
+            this.previousState = this.cloneState(this.currentState);
+        }
+
         // Обновляем статистику
         this.subStepHistory.push(this.physicsUpdatesThisFrame);
         if (this.subStepHistory.length > 60) {

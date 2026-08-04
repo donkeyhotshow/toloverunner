@@ -42,12 +42,13 @@ export class PhysicsEngine {
         return CollisionSystem.checkWithCCD(
             px, py,
             prevX, prevY,
-            moveDist / Math.max(dt, 0.001), // instantaneous velocity magnitude
+            moveDist / Math.max(dt, 0.001), // instantaneous forward velocity magnitude
             gameObjects,
             currentDistance,
             previousDistance,
             isDashing,
-            this.playerPhysics.isSliding
+            this.playerPhysics.isSliding,
+            this.playerPhysics.velocity.y  // B-06/B-07: real vertical velocity for graze window + trampoline guard
         );
     }
 

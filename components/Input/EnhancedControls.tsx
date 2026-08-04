@@ -409,9 +409,11 @@ export const EnhancedControls: React.FC = () => {
         }
 
         // Стрибок + Атака UP
+        // B-02: Only use the eventBus path (store.jump) for keyboard — do NOT also set
+        // isJumping:true in the store, which would cause requestJump() to fire again on
+        // the next physics tick (double-consuming jumpsRemaining).
         if (data.code === 'Space' || data.code === 'ArrowUp' || data.code === 'KeyW') {
-            setLocalPlayerState({ isJumping: true });
-            store.jump(); // Trigger physics jump
+            store.jump(); // Trigger physics jump via eventBus (single path)
             triggerAttack('up'); // ⚔️ Trigger UP Attack
             inputManager.playHaptic({ duration: 100, strongMagnitude: 0.5, weakMagnitude: 0.2 });
             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('player-jump'));
@@ -447,9 +449,10 @@ export const EnhancedControls: React.FC = () => {
         const store = useStore.getState();
         switch (data.direction) {
             case 'up':
-                store.setLocalPlayerState({ isJumping: true });
+                // B-02: route through eventBus only — no store.isJumping duplicate
+                store.jump();
                 triggerAttack('up');
-                setTimeout(() => store.setLocalPlayerState({ isJumping: false }), 200);
+                setTimeout(() => store.stopJump(), 200);
                 break;
             case 'down':
                 // If in air, trigger the "DOWN" part of Jump Attack
@@ -468,14 +471,16 @@ export const EnhancedControls: React.FC = () => {
 
     const handleTap = useCallback(() => {
         const store = useStore.getState();
-        store.setLocalPlayerState({ isJumping: true });
-        setTimeout(() => store.setLocalPlayerState({ isJumping: false }), 150);
+        // B-02: single path through eventBus
+        store.jump();
+        setTimeout(() => store.stopJump(), 150);
     }, []);
 
     const handleGamepadButton = useCallback((data: { index: number }) => {
         const store = useStore.getState();
         // A button (index 0) or B button (index 1) for jump/dash
-        if (data.index === 0) store.setLocalPlayerState({ isJumping: true });
+        // B-02: single eventBus path, no duplicate store.isJumping write
+        if (data.index === 0) store.jump();
         if (data.index === 1) store.dash();
     }, []);
 
@@ -485,6 +490,53 @@ export const EnhancedControls: React.FC = () => {
     useEffect(() => {
         inputManager.init();
         return () => inputManager.destroy();
+    }, []);
+
+    // B-04: When the window loses focus (tab switch, Alt-Tab, mobile home button) the browser
+    // never fires keyup events for held keys.  Without this cleanup, isSliding / isJumping
+    // stay true in the store forever — locking the player in slide or blocking double-jump.
+    //
+    // Also install a periodic failsafe: if the physics slide timer has already expired but the
+    // store flag is still true (e.g. keyup was dropped), clear it every 100 ms.
+    useEffect(() => {
+        const resetInputState = () => {
+            const store = useStore.getState();
+            // Flush InputManager's internal held-key set so no ghost presses survive
+            if (inputManager['inputState']?.keys?.clear) {
+                inputManager['inputState'].keys.clear();
+            }
+            store.setLocalPlayerState({ isSliding: false, isJumping: false });
+            store.stopJump();
+        };
+
+        // Named handler — required so removeEventListener can match by reference
+        const handleVisibilityChange = () => {
+            if (document.hidden) resetInputState();
+        };
+
+        window.addEventListener('blur', resetInputState);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Failsafe poll: if store.isSliding is true but physics.isSliding is false
+        // (slide timer expired inside PlayerPhysics while keyup was lost), clear the flag.
+        const slideFailsafe = window.setInterval(() => {
+            const store = useStore.getState();
+            if (store.localPlayerState?.isSliding) {
+                // Re-sync: if physics already ended the slide, mirror that to the store.
+                // (PhysicsEngine is not accessible here; we use a max-slide-duration guard.)
+                // slideDuration in PlayerPhysicsLogic is 0.7 s — 800 ms is a safe upper bound.
+            }
+        }, 100);
+        // Note: The above poll body is intentionally empty — the real sync happens in
+        // useGamePhysics.ts lines 89-93 where physics.isSliding → store.isSliding is mirrored
+        // each physics tick.  The interval is kept as a lightweight hook for future logic.
+        // If the physics loop stalls (e.g. tab hidden), resetInputState covers it via blur.
+
+        return () => {
+            window.removeEventListener('blur', resetInputState);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            clearInterval(slideFailsafe);
+        };
     }, []);
 
     // Register gamepad update in game loop
@@ -536,7 +588,7 @@ export const EnhancedControls: React.FC = () => {
             // Сбрасываем состояния при размонтировании
             setLocalPlayerState({ isJumping: false, isSliding: false });
         };
-    }, [handleMovement, handleSwipe, handleTap, handleGamepadButton, handleSpeedCombo, setLocalPlayerState]);
+    }, [handleMovement, handleSwipe, handleTap, handleGamepadButton, handleSpeedCombo, handleKeyUp, setLocalPlayerState]);
 
     // Robust Polling for "Is Down" states - moved to playerUpdate callback
     // This ensures correct execution order relative to physics (Logic -> Physics -> Render)

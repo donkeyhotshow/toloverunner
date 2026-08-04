@@ -65,7 +65,9 @@ export class PlayerPhysics {
         jumpForce: JUMP_FORCE_Y,
         doubleJumpForce: DOUBLE_JUMP_FORCE,
         laneSpeed: 28,
-        laneDamping: 0.88,
+        // B-03: 0.88 was underdamped (ζ < 1) causing visible overshoot into adjacent lane.
+        // 1.0 = critical damping — fastest settling with zero oscillation.
+        laneDamping: 1.0,
         maxVelocity: 200,
         groundY: 0,
         jumpBuffer: 0.15,         // ⬇ було 0.2
@@ -109,14 +111,11 @@ export class PlayerPhysics {
     }
 
     setLane(laneIndex: number) {
-        const oldLane = this.targetLane;
         this.targetLane = validateLane(laneIndex);
-
-        // Add a little extra "kick" when changing lanes for more punchy feel
-        if (oldLane !== this.targetLane) {
-            const direction = Math.sign(this.targetLane - oldLane);
-            this.laneVelocity += direction * 5;
-        }
+        // B-03: The extra velocity kick (+5) was compounding the underdamped spring and
+        // causing the player to visibly slide past the target lane centre.
+        // With critical damping (laneDamping=1.0) the spring settles sharply on its own —
+        // no additional kick is needed.
     }
 
     applyRecoil(force: THREE.Vector3) {
