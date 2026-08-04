@@ -95,7 +95,10 @@ export class CollisionSystem {
     /**
      * ПРОСУНУТА ПЕРЕВІРКА КОЛІЗІЙ З CCD
      * При швидкості вище CCD_VELOCITY_THRESHOLD виконує sweep по траєкторії,
-     * щоб уникнути "ghost hits" та "pass through" на великих швидкостях.
+     * щоб уникнути "ghost hits" та "pass через" на великих швидкостях.
+     *
+     * Also passes playerVelocityY through to checkSimple so trampoline (B-07) and
+     * graze (B-06) checks can use the real vertical velocity.
      */
     static checkWithCCD(
         playerX: number,
@@ -107,7 +110,8 @@ export class CollisionSystem {
         currentDistance: number,
         previousDistance: number = currentDistance,
         isDashing: boolean = false,
-        isSliding: boolean = false
+        isSliding: boolean = false,
+        playerVelocityY: number = 0
     ): CollisionResult {
         const useCCD = Math.abs(playerVelocity) >= CollisionSystem.CCD_VELOCITY_THRESHOLD ||
                        Math.abs(currentDistance - previousDistance) > CollisionSystem.PLAYER_RADIUS;
@@ -115,7 +119,7 @@ export class CollisionSystem {
         if (!useCCD) {
             // Low speed — simple single-point check is sufficient
             const system = new CollisionSystem();
-            return system.checkSimple(playerX, playerY, objects, currentDistance, previousDistance, isDashing, isSliding);
+            return system.checkSimple(playerX, playerY, objects, currentDistance, previousDistance, isDashing, isSliding, playerVelocityY);
         }
 
         // CCD sweep: interpolate player position across sub-steps
@@ -138,19 +142,22 @@ export class CollisionSystem {
             const sweepDist = previousDistance + dz * t;
             const sweepPrevDist = previousDistance + dz * (i - 1) / steps;
 
-            const result = system.checkSimple(sweepX, sweepY, objects, sweepDist, sweepPrevDist, isDashing, isSliding);
+            const result = system.checkSimple(sweepX, sweepY, objects, sweepDist, sweepPrevDist, isDashing, isSliding, playerVelocityY);
             if (result.hit) return result;
             // Propagate graze/trampoline/jumpedOver from last step
             if (i === steps) return result;
         }
 
         // Fallback (should not reach here)
-        return system.checkSimple(playerX, playerY, objects, currentDistance, previousDistance, isDashing, isSliding);
+        return system.checkSimple(playerX, playerY, objects, currentDistance, previousDistance, isDashing, isSliding, playerVelocityY);
     }
 
     /**
      * PRECISE CONTINUOUS COLLISION DETECTION (CCD)
      * Solves "Ghost Hits" and "Pass Through" bugs.
+     *
+     * @param playerVelocityY - Real vertical velocity from PlayerPhysics (used for B-06 graze
+     *   window sizing and B-07 trampoline direction guard).
      */
     public checkSimple(
         playerX: number,
@@ -159,7 +166,8 @@ export class CollisionSystem {
         currentDistance: number,
         previousDistance: number = currentDistance,
         isDashing: boolean = false,
-        isSliding: boolean = false
+        isSliding: boolean = false,
+        playerVelocityY: number = 0
     ): CollisionResult {
         const result = { hit: false, graze: false, object: null, jumpedOverObject: null, trampolineObject: null } as CollisionResult;
         result.hit = false;
@@ -268,8 +276,12 @@ export class CollisionSystem {
                     }
                     continue; // Jumped over safely
                 }
-                // GDD ObstacleType.TRAMPOLINE: WormTypes in landing zone → bounce, no damage
-                if (WORM_TYPE_SET.has(obj.type) && playerY > objY + TRAMPOLINE_MIN_Y) {
+                // GDD ObstacleType.TRAMPOLINE: WormTypes in landing zone → bounce, no damage.
+                // B-07: Also require playerVelocityY <= 0 (falling or at peak) to avoid a
+                // false bounce when the player jumps upward through the worm's top surface
+                // — the old check fired whenever playerY > TRAMPOLINE_MIN_Y regardless of
+                // whether the player was ascending or descending, causing spurious bounces.
+                if (WORM_TYPE_SET.has(obj.type) && playerY > objY + TRAMPOLINE_MIN_Y && playerVelocityY <= 0) {
                     result.trampolineObject = obj;
                     continue; // Trampoline bounce, no hit
                 }
@@ -300,9 +312,16 @@ export class CollisionSystem {
 
                 if (!isPickup) return result;
             } else if (!isPickup) {
-                // Перевірка graze тільки при правильному Z
+                // B-06: The old hard-coded graze window (|zEnd| < 1.0) was too narrow at high
+                // forward speeds (v > 30 u/s → object travels 0.5 u/frame, passes 1.0 in <2
+                // frames, meaning graze fires only once or not at all).
+                // Fix: scale the window by forward speed so it always spans at least 2 frames.
+                // `currentDistance - previousDistance` is the per-substep travel distance in
+                // world units.  A multiplier of 3 gives comfortable headroom at all speeds.
+                const forwardTravelPerStep = Math.abs(currentDistance - previousDistance);
+                const grazeZWindow = Math.max(1.5, forwardTravelPerStep * 3);
                 const grazeDistance = CollisionSystem.GRAZE_RADIUS + playerRadius;
-                if (dx < grazeDistance && Math.abs(zEnd) < 1.0) {
+                if (dx < grazeDistance && Math.abs(zEnd) < grazeZWindow) {
                     result.graze = true;
                     result.object = obj;
                 }
