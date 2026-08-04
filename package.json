@@ -26,11 +26,9 @@
     "build:prod": "vite build"
   },
   "dependencies": {
-    "@dimforge/rapier3d": "^0.19.3",
     "@react-three/drei": "^9.99.0",
     "@react-three/fiber": "^8.15.16",
     "@react-three/postprocessing": "^2.16.0",
-    "@react-three/rapier": "^1.2.0",
     "@sentry/browser": "^7.100.0",
     "@sentry/react": "^7.100.0",
     "clsx": "^2.1.1",

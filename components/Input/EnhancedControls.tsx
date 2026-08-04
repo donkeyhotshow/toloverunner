@@ -588,7 +588,7 @@ export const EnhancedControls: React.FC = () => {
             // Сбрасываем состояния при размонтировании
             setLocalPlayerState({ isJumping: false, isSliding: false });
         };
-    }, [handleMovement, handleSwipe, handleTap, handleGamepadButton, handleSpeedCombo, setLocalPlayerState]);
+    }, [handleMovement, handleSwipe, handleTap, handleGamepadButton, handleSpeedCombo, handleKeyUp, setLocalPlayerState]);
 
     // Robust Polling for "Is Down" states - moved to playerUpdate callback
     // This ensures correct execution order relative to physics (Logic -> Physics -> Render)
