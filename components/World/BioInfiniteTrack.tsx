@@ -68,7 +68,11 @@ function createWallGeometry(
   segmentLength: number,
   segL: number
 ): THREE.PlaneGeometry {
-  const geo = new THREE.PlaneGeometry(height, segmentLength, 4, segL);
+  // Authored so local X = along-track length, local Y = vertical height.
+  // After a rotation.y of ±90° the plane stands vertically and runs down the
+  // track (length along world Z, height along world Y), instead of facing the
+  // camera as a flat billboard.
+  const geo = new THREE.PlaneGeometry(segmentLength, height, segL, 4);
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
   return geo;
@@ -198,16 +202,18 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
       }
       roadMeshRef.current.instanceMatrix.needsUpdate = true;
 
-      // Init walls
+      // Init walls — instance matrices define full placement (no offset on the
+      // parent instancedMesh), rotated to stand vertically facing inward.
       if (leftWallRef.current && rightWallRef.current) {
         const wX = width / 2 + wallGap;
         for (let i = 0; i < segmentCount; i++) {
           dummy.position.set(-wX, wallHeight / 2, positions[i]!);
-          dummy.rotation.set(0, 0, 0);
+          dummy.rotation.set(0, Math.PI / 2, 0);
           dummy.updateMatrix();
           leftWallRef.current.setMatrixAt(i, dummy.matrix);
 
           dummy.position.set(wX, wallHeight / 2, positions[i]!);
+          dummy.rotation.set(0, -Math.PI / 2, 0);
           dummy.updateMatrix();
           rightWallRef.current.setMatrixAt(i, dummy.matrix);
         }
@@ -276,11 +282,12 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           const wX = width / 2 + wallGap;
           for (let i = 0; i < segmentCount; i++) {
             dummy.position.set(-wX, wallHeight / 2, positions[i]!);
-            dummy.rotation.set(0, 0, 0);
+            dummy.rotation.set(0, Math.PI / 2, 0);
             dummy.updateMatrix();
             leftWallRef.current.setMatrixAt(i, dummy.matrix);
 
             dummy.position.set(wX, wallHeight / 2, positions[i]!);
+            dummy.rotation.set(0, -Math.PI / 2, 0);
             dummy.updateMatrix();
             rightWallRef.current.setMatrixAt(i, dummy.matrix);
           }
@@ -289,9 +296,6 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
         }
       }
     });
-
-    // --- Wall X position ---
-    const wX = width / 2 + wallGap;
 
     return (
       <group>
@@ -302,22 +306,20 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           frustumCulled={false}
         />
 
-        {/* Left wall — 1 draw call */}
+        {/* Left wall — 1 draw call (placement fully defined by instance matrices) */}
         {enableWalls && (
           <instancedMesh
             ref={leftWallRef}
             args={[wallGeometry, wallMaterial, segmentCount]}
-            position={[-wX, wallHeight / 2, 0]}
             frustumCulled={false}
           />
         )}
 
-        {/* Right wall — 1 draw call */}
+        {/* Right wall — 1 draw call (placement fully defined by instance matrices) */}
         {enableWalls && (
           <instancedMesh
             ref={rightWallRef}
             args={[wallGeometry, wallMaterial, segmentCount]}
-            position={[wX, wallHeight / 2, 0]}
             frustumCulled={false}
           />
         )}
