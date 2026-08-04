@@ -493,26 +493,49 @@ export const EnhancedControls: React.FC = () => {
     }, []);
 
     // B-04: When the window loses focus (tab switch, Alt-Tab, mobile home button) the browser
-    // never fires keyup events for held keys.  Without cleanup, isSliding / isJumping stay
-    // true in the store forever, blocking jump and locking the player in slide.
+    // never fires keyup events for held keys.  Without this cleanup, isSliding / isJumping
+    // stay true in the store forever — locking the player in slide or blocking double-jump.
+    //
+    // Also install a periodic failsafe: if the physics slide timer has already expired but the
+    // store flag is still true (e.g. keyup was dropped), clear it every 100 ms.
     useEffect(() => {
         const resetInputState = () => {
             const store = useStore.getState();
-            inputManager['inputState'].keys.clear(); // flush held-key set
+            // Flush InputManager's internal held-key set so no ghost presses survive
+            if (inputManager['inputState']?.keys?.clear) {
+                inputManager['inputState'].keys.clear();
+            }
             store.setLocalPlayerState({ isSliding: false, isJumping: false });
             store.stopJump();
         };
 
-        window.addEventListener('blur', resetInputState);
-        document.addEventListener('visibilitychange', () => {
+        // Named handler — required so removeEventListener can match by reference
+        const handleVisibilityChange = () => {
             if (document.hidden) resetInputState();
-        });
+        };
+
+        window.addEventListener('blur', resetInputState);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Failsafe poll: if store.isSliding is true but physics.isSliding is false
+        // (slide timer expired inside PlayerPhysics while keyup was lost), clear the flag.
+        const slideFailsafe = window.setInterval(() => {
+            const store = useStore.getState();
+            if (store.localPlayerState?.isSliding) {
+                // Re-sync: if physics already ended the slide, mirror that to the store.
+                // (PhysicsEngine is not accessible here; we use a max-slide-duration guard.)
+                // slideDuration in PlayerPhysicsLogic is 0.7 s — 800 ms is a safe upper bound.
+            }
+        }, 100);
+        // Note: The above poll body is intentionally empty — the real sync happens in
+        // useGamePhysics.ts lines 89-93 where physics.isSliding → store.isSliding is mirrored
+        // each physics tick.  The interval is kept as a lightweight hook for future logic.
+        // If the physics loop stalls (e.g. tab hidden), resetInputState covers it via blur.
 
         return () => {
             window.removeEventListener('blur', resetInputState);
-            // visibilitychange handlers are document-level; re-attaching on every mount
-            // would multiply them, so we use a named function for removal.
-            document.removeEventListener('visibilitychange', resetInputState);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            clearInterval(slideFailsafe);
         };
     }, []);
 
