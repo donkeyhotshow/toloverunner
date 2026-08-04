@@ -7,7 +7,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Vector3, MathUtils, PerspectiveCamera } from 'three';
+import { Vector3, PerspectiveCamera } from 'three';
 import { useStore } from '../../store';
 import { GameStatus } from '../../types';
 import { registerGameLoopCallback, unregisterGameLoopCallback } from '../System/GameLoopRegistry';
@@ -15,6 +15,7 @@ import { getPhysicsStabilizer } from '../../core/physics/PhysicsStabilizer';
 import { useCameraShake } from '../../store/cameraShakeStore';
 import { eventBus } from '../../utils/eventBus';
 import { GAMEPLAY_CONFIG, RUN_SPEED_BASE } from '../../constants';
+import { damp, dampVec3 } from '../../utils/damp';
 
 // FIXED POSITION CAMERA CONFIGURATION
 const CAMERA_CONFIG = {
@@ -128,8 +129,8 @@ const CameraController: React.FC = () => {
       if (!isIngameState) return;
       if (status === GameStatus.PAUSED) return; // Prevent drift while paused if needed, but usually we want to keep looking
 
-      // Dutch Angle Smoothing
-      dutchTilt.current = MathUtils.lerp(dutchTilt.current, targetDutchTilt.current, delta * 10);
+      // Dutch Angle Smoothing (frame-rate independent)
+      dutchTilt.current = damp(dutchTilt.current, targetDutchTilt.current, 10, delta);
 
       // Decrement Dutch tilt reset timers (frame-rate-independent replacement for setTimeout)
       if (dutchResetTimerA.current > 0) {
@@ -185,8 +186,9 @@ const CameraController: React.FC = () => {
 
       calculateCameraPosition(playerPos, targetDistance, targetHeightOffset);
 
-      // Smooth follow — high lerp speed for near-instant follow
-      currentPos.current.lerp(targetPos.current, delta * 25.0);
+      // Smooth follow — high rate for near-instant follow, frame-rate independent
+      // so the camera can never overshoot the player during frame drops.
+      dampVec3(currentPos.current, targetPos.current, 25.0, delta);
 
       // Apply camera shake offset (zero when no shake active)
       const shakeMag = useCameraShake.getState().update(delta);
@@ -204,10 +206,11 @@ const CameraController: React.FC = () => {
 
       const perspectiveCamera = camera as PerspectiveCamera;
       if (perspectiveCamera.isPerspectiveCamera) {
-        perspectiveCamera.fov = MathUtils.lerp(
+        perspectiveCamera.fov = damp(
           perspectiveCamera.fov,
           targetFOV,
-          delta * CAMERA_CONFIG.FOV_LERP
+          CAMERA_CONFIG.FOV_LERP,
+          delta
         );
         perspectiveCamera.updateProjectionMatrix();
       }

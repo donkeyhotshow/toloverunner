@@ -19,6 +19,7 @@ import * as THREE from 'three';
 import { ToonSperm } from './ToonSperm';
 import { useStore } from '../../store';
 import { getPhysicsStabilizer } from '../../core/physics/PhysicsStabilizer';
+import { damp } from '../../utils/damp';
 
 interface PlayerControllerProps {
   visible?: boolean;
@@ -82,9 +83,11 @@ export const PlayerController: React.FC<PlayerControllerProps> = ({
       landSquashRef.current = Math.max(0, landSquashRef.current - delta * 8);
     }
 
-    // Lateral tilt: proportional to X velocity, max ±8° (0.14 rad), smoothed
+    // Lateral tilt: proportional to X velocity, max ±8° (0.14 rad), smoothed.
+    // Frame-rate-independent damping keeps the tilt settle-rate identical across
+    // FPS and prevents overshoot when the frame delta spikes.
     const targetTilt = THREE.MathUtils.clamp(velX / 12.0, -1, 1);
-    lateralTiltRef.current += (targetTilt - lateralTiltRef.current) * Math.min(1, delta * 10);
+    lateralTiltRef.current = damp(lateralTiltRef.current, targetTilt, 10, delta);
 
     // ── Position: physics Y + model-only visual offset ──
     if (!groupRef.current) return;
