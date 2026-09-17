@@ -193,13 +193,14 @@ const AppContent: React.FC = () => {
             <Canvas
               data-testid="game-canvas"
               shadows={false}
-              dpr={[1, 2]}
+              // Cap DPR to keep frame pacing stable on high-density displays.
+              dpr={[1, 1.5]}
               gl={{
                 antialias: true,
                 alpha: false,
                 stencil: false,
                 depth: true,
-                logarithmicDepthBuffer: true, // 🛡️ HIGH PRECISION: Solves Z-fighting at distance
+                logarithmicDepthBuffer: true,
                 powerPreference: 'high-performance',
                 precision: 'highp',
                 toneMapping: THREE.ACESFilmicToneMapping, // 🔥 ENABLED: Cinematic lighting

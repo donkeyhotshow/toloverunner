@@ -145,6 +145,9 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           side: THREE.DoubleSide,
           depthWrite: true,
           depthTest: true,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1,
         }),
       [speed]
     );
@@ -259,36 +262,33 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
         }
       }
 
-      // Only update matrices when recycling occurred
-      if (recycled) {
-        // Road
-        if (roadMeshRef.current) {
-          for (let i = 0; i < segmentCount; i++) {
-            dummy.position.set(0, 0.5, positions[i]!);
-            dummy.rotation.set(-Math.PI / 2, 0, 0);
-            dummy.updateMatrix();
-            roadMeshRef.current.setMatrixAt(i, dummy.matrix);
-          }
-          roadMeshRef.current.instanceMatrix.needsUpdate = true;
+      // Keep matrices synchronized with the moving segment positions. Updating
+      // only on recycle leaves the visible road frozen between recycle events.
+      if (roadMeshRef.current) {
+        for (let i = 0; i < segmentCount; i++) {
+          dummy.position.set(0, 0.5, positions[i]!);
+          dummy.rotation.set(-Math.PI / 2, 0, 0);
+          dummy.updateMatrix();
+          roadMeshRef.current.setMatrixAt(i, dummy.matrix);
         }
+        roadMeshRef.current.instanceMatrix.needsUpdate = true;
+      }
 
-        // Walls
-        if (leftWallRef.current && rightWallRef.current) {
-          const wX = width / 2 + wallGap;
-          for (let i = 0; i < segmentCount; i++) {
-            dummy.position.set(-wX, wallHeight / 2, positions[i]!);
-            dummy.rotation.set(0, Math.PI / 2, 0);
-            dummy.updateMatrix();
-            leftWallRef.current.setMatrixAt(i, dummy.matrix);
+      if (leftWallRef.current && rightWallRef.current) {
+        const wX = width / 2 + wallGap;
+        for (let i = 0; i < segmentCount; i++) {
+          dummy.position.set(-wX, wallHeight / 2, positions[i]!);
+          dummy.rotation.set(0, Math.PI / 2, 0);
+          dummy.updateMatrix();
+          leftWallRef.current.setMatrixAt(i, dummy.matrix);
 
-            dummy.position.set(wX, wallHeight / 2, positions[i]!);
-            dummy.rotation.set(0, -Math.PI / 2, 0);
-            dummy.updateMatrix();
-            rightWallRef.current.setMatrixAt(i, dummy.matrix);
-          }
-          leftWallRef.current.instanceMatrix.needsUpdate = true;
-          rightWallRef.current.instanceMatrix.needsUpdate = true;
+          dummy.position.set(wX, wallHeight / 2, positions[i]!);
+          dummy.rotation.set(0, -Math.PI / 2, 0);
+          dummy.updateMatrix();
+          rightWallRef.current.setMatrixAt(i, dummy.matrix);
         }
+        leftWallRef.current.instanceMatrix.needsUpdate = true;
+        rightWallRef.current.instanceMatrix.needsUpdate = true;
       }
     });
 
