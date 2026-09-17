@@ -57,13 +57,16 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   );
 
   // ── MATERIALS ──
-  // White toon body
+  // Stable lit materials: emissive lift keeps the player readable even when
+  // the tunnel lighting is low or a shadow falls across the road.
   const bodyMat = useMemo(
     () =>
-      new THREE.MeshToonMaterial({
-        color: '#FFFFFF',
-        emissive: '#DDDDFF',
-        emissiveIntensity: 0.05,
+      new THREE.MeshStandardMaterial({
+        color: '#F7FBFF',
+        roughness: 0.34,
+        metalness: 0,
+        emissive: '#5D78A8',
+        emissiveIntensity: 0.18,
       }),
     []
   );
@@ -99,9 +102,10 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
       new THREE.MeshBasicMaterial({
         color: '#AEE3FF',
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.2,
         side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
+        blending: THREE.NormalBlending,
+        depthTest: false,
         depthWrite: false,
       }),
     []
@@ -111,21 +115,24 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
       new THREE.MeshBasicMaterial({
         color: '#DDEEFF',
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.28,
         side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
+        blending: THREE.NormalBlending,
+        depthTest: false,
         depthWrite: false,
       }),
     []
   );
 
-  // Tail material — white, matching body
+  // Tail material — slightly cool so its silhouette separates from the road.
   const tailMat = useMemo(
     () =>
-      new THREE.MeshToonMaterial({
-        color: '#FFFFFF',
-        emissive: '#CCCCFF',
-        emissiveIntensity: 0.04,
+      new THREE.MeshStandardMaterial({
+        color: '#EAF5FF',
+        roughness: 0.38,
+        metalness: 0,
+        emissive: '#5274A8',
+        emissiveIntensity: 0.14,
       }),
     []
   );
@@ -234,8 +241,8 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   return (
     <group ref={groupRef} scale={scale} frustumCulled={false}>
       {/* GLOW EFFECTS (2 layers) */}
-      <mesh geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
-      <mesh geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} frustumCulled={false} />
+      <mesh geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} renderOrder={0} frustumCulled={false} />
+      <mesh geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} renderOrder={0} frustumCulled={false} />
 
       {/* BODY GROUP (squash/stretch target) */}
       <group ref={bodyRef} position={[0, 0, 0]}>
@@ -250,9 +257,9 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
           {/* EYES */}
           {/* Left Eye */}
           <group position={[-0.19, 0.14, 0.38]}>
-            <mesh geometry={eyeGeo} material={eyeWhiteMat} frustumCulled={false} matrixAutoUpdate={false}>
-              <mesh geometry={pupilGeo} material={eyeBlackMat} position={[0.01, -0.01, 0.04]} frustumCulled={false} matrixAutoUpdate={false} />
-              <mesh geometry={hlGeo} material={eyeHlMat} position={[-0.02, 0.03, 0.07]} frustumCulled={false} matrixAutoUpdate={false} />
+            <mesh geometry={eyeGeo} material={eyeWhiteMat} frustumCulled={false}>
+              <mesh geometry={pupilGeo} material={eyeBlackMat} position={[0.01, -0.01, 0.04]} frustumCulled={false} />
+              <mesh geometry={hlGeo} material={eyeHlMat} position={[-0.02, 0.03, 0.07]} frustumCulled={false} />
             </mesh>
           </group>
 
