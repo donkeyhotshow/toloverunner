@@ -49,16 +49,10 @@ function createRoadGeometry(
 ): THREE.PlaneGeometry {
   const geo = new THREE.PlaneGeometry(width, segmentLength, segW, segL);
 
-  // Keep the geometry centered at local Y=0. The instance matrix places the
-  // road at the gameplay floor height after the XY plane is rotated to XZ.
-  const posAttr = geo.attributes.position;
-  if (posAttr) {
-    const positions = posAttr.array as Float32Array;
-    for (let i = 1; i < positions.length; i += 3) {
-      positions[i] = 0;
-    }
-  }
-
+  // PlaneGeometry is authored in the XY plane: local X is road width and
+  // local Y is track length. The instance matrix rotates it onto XZ while
+  // preserving the full segment length; collapsing local Y would create a
+  // degenerate line and make the road disappear.
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
   return geo;
