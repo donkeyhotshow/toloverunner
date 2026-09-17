@@ -72,8 +72,9 @@ export const FinishEgg: React.FC<FinishEggProps> = ({ totalDistanceRef, winDista
             groupRef.current.position.z = targetZ;
             groupRef.current.position.y = 10; // Levitate
 
-            // Hide if too far to save render cost (optional, but good for focus)
-            groupRef.current.visible = targetZ > -900; // Only visible in last 900m (draw distance + buffer)
+            // Keep the goal visible from the start as a distant, unreachable
+            // landmark. This gives the runner a clear direction and destination.
+            groupRef.current.visible = true
         }
 
         if (meshRef.current) {

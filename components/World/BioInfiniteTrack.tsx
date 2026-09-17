@@ -49,12 +49,13 @@ function createRoadGeometry(
 ): THREE.PlaneGeometry {
   const geo = new THREE.PlaneGeometry(width, segmentLength, segW, segL);
 
-  // FORCE Y=0.5 for all vertices (FLAT ROAD)
+  // Keep the geometry centered at local Y=0. The instance matrix places the
+  // road at the gameplay floor height after the XY plane is rotated to XZ.
   const posAttr = geo.attributes.position;
   if (posAttr) {
     const positions = posAttr.array as Float32Array;
     for (let i = 1; i < positions.length; i += 3) {
-      positions[i] = 0.5;
+      positions[i] = 0;
     }
   }
 
@@ -151,7 +152,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           depthWrite: true,
           depthTest: true,
         }),
-      []
+      [speed]
     );
 
     const wallMaterial = useMemo(
@@ -178,7 +179,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           depthWrite: true,
           depthTest: true,
         }),
-      []
+      [speed]
     );
 
     // Cleanup materials on unmount
@@ -195,7 +196,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
 
       const positions = positionsRef.current;
       for (let i = 0; i < segmentCount; i++) {
-        dummy.position.set(0, 0, positions[i]!);
+        dummy.position.set(0, 0.5, positions[i]!);
         dummy.rotation.set(-Math.PI / 2, 0, 0);
         dummy.updateMatrix();
         roadMeshRef.current.setMatrixAt(i, dummy.matrix);
@@ -269,7 +270,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
         // Road
         if (roadMeshRef.current) {
           for (let i = 0; i < segmentCount; i++) {
-            dummy.position.set(0, 0, positions[i]!);
+            dummy.position.set(0, 0.5, positions[i]!);
             dummy.rotation.set(-Math.PI / 2, 0, 0);
             dummy.updateMatrix();
             roadMeshRef.current.setMatrixAt(i, dummy.matrix);
