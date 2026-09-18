@@ -150,7 +150,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           polygonOffsetFactor: 1,
           polygonOffsetUnits: 1,
         }),
-      [speed]
+      []
     );
 
     const wallMaterial = useMemo(
@@ -177,7 +177,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           depthWrite: true,
           depthTest: true,
         }),
-      [speed]
+      []
     );
 
     // Cleanup materials on unmount
