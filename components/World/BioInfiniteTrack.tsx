@@ -90,12 +90,13 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
     segmentLength = 200,
     segmentCount = 7,
     enableWalls = true,
-    wallHeight = 10,
+    wallHeight = 6,
   }) => {
     // --- Config ---
     const segmentsW = 4;
     const segmentsL = 256;
     const wallGap = 0.5;
+    const roadLift = 0.15;
 
     // --- Refs ---
     const roadMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -193,7 +194,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
 
       const positions = positionsRef.current;
       for (let i = 0; i < segmentCount; i++) {
-        dummy.position.set(0, 0.5, positions[i]!);
+        dummy.position.set(0, 0.5 + roadLift, positions[i]!);
         dummy.rotation.set(-Math.PI / 2, 0, 0);
         dummy.updateMatrix();
         roadMeshRef.current.setMatrixAt(i, dummy.matrix);
@@ -218,7 +219,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
         leftWallRef.current.instanceMatrix.needsUpdate = true;
         rightWallRef.current.instanceMatrix.needsUpdate = true;
       }
-    }, [segmentCount, width, wallHeight, wallGap, dummy]);
+    }, [segmentCount, width, wallHeight, wallGap, roadLift, dummy]);
 
     // --- Game loop ---
     const elapsedRef = useRef(0);
@@ -264,7 +265,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
       // only on recycle leaves the visible road frozen between recycle events.
       if (roadMeshRef.current) {
         for (let i = 0; i < segmentCount; i++) {
-          dummy.position.set(0, 0.5, positions[i]!);
+          dummy.position.set(0, 0.5 + roadLift, positions[i]!);
           dummy.rotation.set(-Math.PI / 2, 0, 0);
           dummy.updateMatrix();
           roadMeshRef.current.setMatrixAt(i, dummy.matrix);
