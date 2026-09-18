@@ -211,6 +211,8 @@ const AppContent: React.FC = () => {
               frameloop="always"
               onCreated={({ scene, camera, gl }) => {
                 debugLog('Canvas created - renderer ready');
+                document.documentElement.dataset.renderReady = 'true';
+                window.dispatchEvent(new CustomEvent('tolove:renderer-ready'));
 
                 const canvas = gl.domElement;
                 const handleContextLost = (event: Event) => {
