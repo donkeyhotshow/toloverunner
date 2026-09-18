@@ -75,7 +75,7 @@ export function useBiomeTransition() {
     // Auto-trigger biome changes every 500 units for testing/infinite feel
     const lastTriggerDist = useRef(0);
     useFrame((_state) => {
-        const dist = (useStore.getState() as any).totalDistance ?? 0;
+        const dist = useStore.getState().distance;
         if (Math.floor(dist / 500) > Math.floor(lastTriggerDist.current / 500)) {
             lastTriggerDist.current = dist;
             if (targetBiome) {

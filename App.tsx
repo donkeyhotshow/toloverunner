@@ -44,7 +44,7 @@ import { DebugOverlay } from './components/UI/DebugOverlay';
 import { RenderController } from './components/System/RenderController';
 import { StableErrorBoundary } from './components/System/StableErrorBoundary';
 import { RenderDebugger } from './components/System/RenderDebugger';
-import SceneController from './components/World/SceneController';
+const LazySceneController = React.lazy(() => import('./components/World/SceneController'));
 
 import { GameplayFeedbackUI } from './components/UI/GameplayFeedbackUI';
 import { EnhancedControls } from './components/Input/EnhancedControls';
@@ -260,7 +260,7 @@ const AppContent: React.FC = () => {
 
               {showGameScene && (
                 <Suspense fallback={null}>
-                  <SceneController />
+                  <LazySceneController />
                 </Suspense>
               )}
 

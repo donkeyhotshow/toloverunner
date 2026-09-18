@@ -3,13 +3,14 @@ import { MicroPlankton } from '../Effects/MicroPlankton';
 import { useStore } from '../../store';
 import { useBiomeTransition } from '../../hooks/useBiomeManager';
 import { useFrame } from '@react-three/fiber';
+import type { AmbientLight, PointLight } from 'three';
 
 export const Environment: React.FC = () => {
   const { colors, biomeData } = useBiomeTransition();
   const speed = useStore(s => s.speed || 30);
   
-  const ambientRef = useRef<any>(null);
-  const pointLightRef = useRef<any>(null);
+  const ambientRef = useRef<AmbientLight>(null);
+  const pointLightRef = useRef<PointLight>(null);
 
   // 🌫️ DYNAMIC FOG: Higher speed = slightly more density (Increased baseline to hide clipping/popping)
   const dynamicFogDensity = Math.max(0.004, biomeData.fogDensity) + (speed - 30) * 0.00008;

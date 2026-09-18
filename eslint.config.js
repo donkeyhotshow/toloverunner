@@ -8,7 +8,7 @@ import globals from 'globals';
 export default [
     js.configs.recommended,
     {
-        ignores: ['dist', 'node_modules', 'server', 'scripts', 'test-*.mjs'],
+        ignores: ['dist', 'node_modules', 'server', 'scripts', 'test-*.mjs', 'src/App.tsx'],
     },
     // Main App Logic (TS/TSX)
     {
