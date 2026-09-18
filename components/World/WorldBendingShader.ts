@@ -46,8 +46,8 @@ export function applyWorldBending(
 ): void {
     const {
         curvature = 0.005,
-        enabled = true,
-        halftone = true, // По умолчанию включено для Bio-Comic стиля
+        enabled = false,
+        halftone = false, // Enabled only after the stable baseline is validated
         halftoneScale = 0.6,
         halftoneFreq = 60.0
     } = options;
