@@ -241,7 +241,6 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
 
       // Move segments
       const positions = positionsRef.current;
-      let recycled = false;
       const segLen = segmentLength;
 
       for (let i = 0; i < segmentCount; i++) {
@@ -258,7 +257,6 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           // Snap-to-grid: eliminate float32 accumulation error on recycle
           const rawPos = maxZ + segLen;
           positions[i] = Math.round(rawPos * 1000) / 1000;
-          recycled = true;
         }
       }
 
