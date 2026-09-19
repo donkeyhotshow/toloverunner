@@ -286,12 +286,22 @@ export class CollisionSystem {
             const dx = Math.abs(objX - playerX);
             const isPickup = !isObstacle && !isSpecialObstacle;
 
-            let hitDistX = !isPickup ? (CollisionSystem.OBSTACLE_RADIUS + playerRadius) : (CollisionSystem.PICKUP_RADIUS + playerRadius);
-            const isWide = obj.type === ObjectType.OBSTACLE_DODGE ||
-                          obj.type === ObjectType.CELL_MEMBRANE ||
-                          (obj.type as ObjectType) === ObjectType.BACILLUS_MAGNUS;
-            if (isWide && (obj.width != null && obj.width > 0)) {
-                hitDistX = obj.width * 0.5 + playerRadius;
+            // Keep collision width aligned with the rendered obstacle scale.
+            // The renderer uses width as a full visual width, so collision uses
+            // its half-extent rather than a generic radius for every type.
+            let hitDistX = !isPickup
+                ? CollisionSystem.OBSTACLE_RADIUS + playerRadius
+                : CollisionSystem.PICKUP_RADIUS + playerRadius;
+            const renderedHalfWidth = obj.width != null && obj.width > 0
+                ? obj.width * 0.5
+                : 0;
+            const usesExplicitWidth = obj.type === ObjectType.OBSTACLE_JUMP ||
+                obj.type === ObjectType.OBSTACLE_SLIDE ||
+                obj.type === ObjectType.OBSTACLE_DODGE ||
+                obj.type === ObjectType.CELL_MEMBRANE ||
+                (obj.type as ObjectType) === ObjectType.BACILLUS_MAGNUS;
+            if (!isPickup && usesExplicitWidth && renderedHalfWidth > 0) {
+                hitDistX = renderedHalfWidth + playerRadius;
             }
             if (dx < hitDistX) {
                 // HIT CONFIRMED
