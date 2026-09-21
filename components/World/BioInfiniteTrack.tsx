@@ -94,7 +94,9 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
   }) => {
     // --- Config ---
     const segmentsW = 4;
-    const segmentsL = 256;
+    // The road shaders provide the visual detail; keep geometry subdivisions
+    // low so the infinite track does not dominate startup or frame time.
+    const segmentsL = 64;
     const wallGap = 0.5;
     const roadLift = 0.15;
 
@@ -240,24 +242,22 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
       if (wu.uOffset) wu.uOffset.value = elapsed * speed;
       if (wu.uSpeed) wu.uSpeed.value = speed;
 
-      // Move segments
+      // Move segments and calculate the recycle target once per frame.
       const positions = positionsRef.current;
       const segLen = segmentLength;
+      const movement = speed * delta;
+      let maxZ = -Infinity;
+      for (let i = 0; i < segmentCount; i++) {
+        const nextZ = (positions[i] ?? 0) - movement;
+        positions[i] = nextZ;
+        if (nextZ > maxZ) maxZ = nextZ;
+      }
 
       for (let i = 0; i < segmentCount; i++) {
-        positions[i] = (positions[i] ?? 0) - speed * delta;
-
-        // Recycle segment that passed behind player
         if ((positions[i] ?? 0) < playerZ - segLen * 2) {
-          // Find the furthest segment
-          let maxZ = -Infinity;
-          for (let j = 0; j < segmentCount; j++) {
-            const pz = positions[j] ?? 0;
-            if (pz > maxZ) maxZ = pz;
-          }
-          // Snap-to-grid: eliminate float32 accumulation error on recycle
-          const rawPos = maxZ + segLen;
-          positions[i] = Math.round(rawPos * 1000) / 1000;
+          // Snap-to-grid: eliminate float32 accumulation error on recycle.
+          positions[i] = Math.round((maxZ + segLen) * 1000) / 1000;
+          maxZ = positions[i]!;
         }
       }
 
