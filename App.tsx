@@ -192,7 +192,7 @@ const AppContent: React.FC = () => {
                 alpha: false,
                 stencil: false,
                 depth: true,
-                logarithmicDepthBuffer: true,
+                logarithmicDepthBuffer: false,
                 powerPreference: 'high-performance',
                 precision: 'highp',
                 toneMapping: THREE.ACESFilmicToneMapping, // 🔥 ENABLED: Cinematic lighting
@@ -271,10 +271,13 @@ const AppContent: React.FC = () => {
 
               {/* Post-processing is intentionally off in the stable baseline. */}
 
-              {/* DynamicEvents MUST be inside Canvas to use useThree() */}
-              <Suspense fallback={null}>
-                <LazyDynamicEvents />
-              </Suspense>
+              {/* DynamicEvents uses gameplay-only subscriptions and stays out of
+                  the menu/countdown render path. */}
+              {(status === GameStatus.PLAYING || status === GameStatus.COUNTDOWN) && (
+                <Suspense fallback={null}>
+                  <LazyDynamicEvents />
+                </Suspense>
+              )}
 
               <EnhancedControls />
             </Canvas>

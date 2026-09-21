@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { PerformanceManager } from '../performance/PerformanceManager';
+import { getPerformanceManager, PerformanceManager } from '../performance/PerformanceManager';
 import { StabilityManager } from '../stability/StabilityManager';
 
 /**
@@ -18,7 +18,9 @@ export interface GameSystems {
  * Фабрика для создания всех систем с правильным порядком инициализации
  */
 export function createGameSystems(): GameSystems {
-    const performanceManager = new PerformanceManager();
+    // All renderers and stability services must share the same manager.
+    // Creating a second instance doubles sampling timers and startup work.
+    const performanceManager = getPerformanceManager();
     const stabilityManager = new StabilityManager();
 
     return {
