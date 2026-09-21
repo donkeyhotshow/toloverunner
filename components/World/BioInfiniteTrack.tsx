@@ -226,7 +226,10 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
     // --- Game loop ---
     const elapsedRef = useRef(0);
 
-    useFrame(({ camera }, delta) => {
+    useFrame(({ camera }, rawDelta) => {
+      // A tab switch or debugger pause can produce a multi-second delta. Clamp
+      // it so the track cannot teleport through several recycle boundaries.
+      const delta = Math.min(rawDelta, 1 / 20);
       elapsedRef.current += delta;
       const elapsed = elapsedRef.current;
 

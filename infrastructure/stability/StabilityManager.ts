@@ -65,6 +65,7 @@ export class StabilityManager {
     private boundGLContextRestored: () => void;
     private canvasElement: HTMLCanvasElement | null = null;
     private retryCanvasTimeoutId: number | null = null;
+    private readonly handleRendererReady = () => this.initializeGLChecks();
 
     // Callbacks
     private onStabilityChange?: (metrics: StabilityMetrics) => void;
@@ -150,12 +151,15 @@ export class StabilityManager {
 
     private initialize() {
         this.initializeGLChecks();
+        window.addEventListener('tolove:renderer-ready', this.handleRendererReady);
         this.startPeriodicChecks();
     }
 
     private initializeGLChecks() {
         const canvas = document.querySelector('canvas');
         if (canvas) {
+            if (this.canvasElement === canvas) return;
+            if (this.canvasElement) this.removeGLListeners(this.canvasElement);
             this.canvasElement = canvas;
             this.addGLListeners(canvas);
         } else {
