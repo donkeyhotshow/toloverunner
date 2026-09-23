@@ -40,6 +40,18 @@ import { RenderController } from './components/System/RenderController';
 import { RenderDebugger } from './components/System/RenderDebugger';
 const LazySceneController = React.lazy(() => import('./components/World/SceneController'));
 
+const SceneMountMarker: React.FC = () => {
+  useEffect(() => {
+    performance.mark('tolove:scene-mounted');
+    try {
+      performance.measure('tolove:renderer-to-scene', 'tolove:renderer-ready', 'tolove:scene-mounted');
+    } catch {
+      // The renderer mark may be unavailable in test environments.
+    }
+  }, []);
+  return null;
+};
+
 import { GameplayFeedbackUI } from './components/UI/GameplayFeedbackUI';
 import { EnhancedControls } from './components/Input/EnhancedControls';
 import { AssetShowcase } from './components/Debug/AssetShowcase';
@@ -168,8 +180,10 @@ const AppContent: React.FC = () => {
           {/* 📰 PAPER TEXTURE OVERLAY - Comic print effect */}
           <div className="paper-texture-overlay" />
 
-          {/* Texture preloading */}
-          <TexturePreloader />
+          {/* Gameplay textures are not needed for the menu's first paint. */}
+          {(status === GameStatus.PLAYING || status === GameStatus.COUNTDOWN) && (
+            <TexturePreloader />
+          )}
 
           <UIStack>
             {/* UI Overlay */}
@@ -210,6 +224,7 @@ const AppContent: React.FC = () => {
               }}
               frameloop="always"
               onCreated={({ scene, camera, gl }) => {
+                performance.mark('tolove:renderer-ready');
                 debugLog('Canvas created - renderer ready');
                 document.documentElement.dataset.renderReady = 'true';
                 window.dispatchEvent(new CustomEvent('tolove:renderer-ready'));
@@ -265,6 +280,7 @@ const AppContent: React.FC = () => {
 
               {showGameScene && (
                 <Suspense fallback={null}>
+                  <SceneMountMarker />
                   <LazySceneController />
                 </Suspense>
               )}
