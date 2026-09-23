@@ -49,6 +49,10 @@ export const PostProcessing: React.FC = (): React.ReactElement | null => {
     const isLowEnd = currentQuality <= QualityLevel.LOW;
     const multisampling = isLowEnd ? 2 : 4;
 
+    useEffect(() => {
+        performance.mark('tolove:postprocessing-ready');
+    }, []);
+
     // Subscribe via eventBus — single event system, no window events
     useEffect(() => {
         const unsubHit = eventBus.on('player:hit', () => {

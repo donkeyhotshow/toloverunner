@@ -43,6 +43,10 @@ interface Particle {
 }
 
 export const ParticleSystem: React.FC = () => {
+  useEffect(() => {
+    performance.mark('tolove:particles-ready');
+  }, []);
+
   const meshRef = useRef<InstancedMesh>(null);
   const lastActiveCountRef = useRef(0);
 
