@@ -45,6 +45,12 @@ export const useChunkSystem = (
     const isProcessingChunk = useRef(false);
 
     const handleChunkGenerated = useCallback((data: Float32Array) => {
+        performance.mark('tolove:obstacles-spawned');
+        try {
+            performance.measure('tolove:chunk-generation', 'tolove:chunk-requested', 'tolove:obstacles-spawned');
+        } catch {
+            // The request mark is unavailable in isolated unit tests.
+        }
         // ✅ STABILIZED SPAWNING LOGIC (Restored with checks)
         // Ensure we don't process if data is empty or invalid
         if (!data || data.length === 0) {
@@ -161,6 +167,7 @@ export const useChunkSystem = (
         isProcessingChunk.current = true;
         const startZ = -lastChunkDistance.current - (CHUNKS_PER_REQUEST * CHUNK_SIZE);
         if (procGen) {
+            performance.mark('tolove:chunk-requested');
             procGen.requestChunk(startZ, CHUNKS_PER_REQUEST, laneCount, biome);
             lastChunkDistance.current += CHUNKS_PER_REQUEST * CHUNK_SIZE;
         } else {
@@ -176,7 +183,11 @@ export const useChunkSystem = (
             pickupsRef.current = [];
             lastChunkDistance.current = 0;
             isProcessingChunk.current = true;
-            const initialChunks = 45;
+            // Keep the first request large enough to cover the opening view,
+            // but avoid constructing 900 world units before the first frame.
+            const initialChunks = 30;
+            performance.mark('tolove:track-ready');
+            performance.mark('tolove:chunk-requested');
             procGen.requestChunk(0, initialChunks, laneCount, biome);
             lastChunkDistance.current = initialChunks * CHUNK_SIZE;
         }

@@ -79,6 +79,7 @@ export const WorldLevelManager: React.FC = React.memo(() => {
     // Reset Track System on play
     useEffect(() => {
         if (isPlaying) {
+            performance.mark('tolove:world-loop-ready');
             trackSystem.reset();
             totalDistanceRef.current = 0;
             accumulatedScoreDistance.current = 0;
