@@ -38,8 +38,10 @@ const CAMERA_CONFIG = {
   BOOST_FOV: 85,  // FOV during speed boost
 
   // Smoothing
-  POSITION_LERP: 8.0,
-  FOV_LERP: 4.0,
+  POSITION_LERP: 5.5,
+  FOV_LERP: 2.5,
+  MAX_LATERAL_OFFSET: 1.25,
+  MAX_SHAKE: 0.08,
 
   // Look-ahead distance
   LOOK_AHEAD: 5.0
@@ -60,8 +62,13 @@ const CameraController: React.FC = () => {
 
   const calculateCameraPosition = (playerPos: Vector3, distance: number, heightOffset: number) => {
     // 🎥 STRICT CAMERA: Camera completely locks horizontally
+    const lateralTarget = MathUtils.clamp(
+      playerPos.x * 0.42,
+      -CAMERA_CONFIG.MAX_LATERAL_OFFSET,
+      CAMERA_CONFIG.MAX_LATERAL_OFFSET
+    );
     targetPos.current.set(
-      playerPos.x, // Perfect X follow, no horizontal offset
+      lateralTarget,
       playerPos.y + heightOffset,
       playerPos.z + distance
     );
@@ -171,12 +178,8 @@ const CameraController: React.FC = () => {
       let targetFOV: number;
       if (gameState.isDashing) {
         targetFOV = CAMERA_CONFIG.DASH_FOV;
-        // High-frequency shake during dash for kinetic energy feel
-        useCameraShake.getState().shake(0.18, 0.05);
       } else if (gameState.speedBoostActive) {
         targetFOV = CAMERA_CONFIG.BOOST_FOV;
-        // Continuous micro-shake during speed boost (re-triggered each frame, short duration)
-        useCameraShake.getState().shake(0.12, 0.06);
       } else {
         const speedRange = Math.max(1, GAMEPLAY_CONFIG.MAX_SPEED - RUN_SPEED_BASE);
         const speedT = Math.min(1, Math.max(0, (gameState.speed - RUN_SPEED_BASE) / speedRange));
@@ -185,8 +188,9 @@ const CameraController: React.FC = () => {
 
       calculateCameraPosition(playerPos, targetDistance, targetHeightOffset);
 
-      // Smooth follow — high lerp speed for near-instant follow
-      currentPos.current.lerp(targetPos.current, delta * 25.0);
+      // Frame-rate independent damping prevents lane changes and collisions from snapping.
+      const followAlpha = 1 - Math.exp(-CAMERA_CONFIG.POSITION_LERP * Math.min(delta, 1 / 20));
+      currentPos.current.lerp(targetPos.current, followAlpha);
 
       // Apply camera shake offset (zero when no shake active)
       const shakeMag = useCameraShake.getState().update(delta);
@@ -195,7 +199,7 @@ const CameraController: React.FC = () => {
           (Math.random() - 0.5) * 2,
           (Math.random() - 0.5) * 2,
           0
-        ).normalize().multiplyScalar(shakeMag * 0.3);
+        ).normalize().multiplyScalar(Math.min(shakeMag * 0.08, CAMERA_CONFIG.MAX_SHAKE));
       } else {
         shakeDirection.current.set(0, 0, 0);
       }
@@ -215,9 +219,9 @@ const CameraController: React.FC = () => {
       // Look slightly ahead of the player, with dutch tilt applied
       // Aim near the road surface ahead so the horizon and lane remain visible.
       lookAtTarget.current.set(
-        playerPos.x,
-        Math.max(0.35, playerPos.y + 0.35),
-        playerPos.z - 8.0
+        currentPos.current.x,
+        Math.max(0.35, currentPos.current.y - 0.9),
+        currentPos.current.z - 8.0
       );
       camera.lookAt(lookAtTarget.current);
       camera.rotation.z += dutchTilt.current;
