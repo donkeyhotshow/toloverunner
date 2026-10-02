@@ -16,7 +16,7 @@ export const ParallaxTunnel: React.FC<{ totalDistance?: number }> = ({ totalDist
 
   const tunnelGeometry = useMemo(() => {
     // 20 radial segments = smooth round intestine tube
-    const geo = new THREE.CylinderGeometry(16, 16, 4000, 20, 400, true);
+    const geo = new THREE.CylinderGeometry(22, 22, 4000, 24, 400, true);
     geo.rotateX(Math.PI / 2);
     return geo;
   }, []);

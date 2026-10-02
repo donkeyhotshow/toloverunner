@@ -23,13 +23,13 @@ const CAMERA_CONFIG = {
   FIXED_SCREEN_Y: -0.2,   // Slightly below center
 
   // Distance settings
-  BASE_DISTANCE: 11,
-  BOOST_DISTANCE: 13,
-  DASH_DISTANCE: 15,
+  BASE_DISTANCE: 8,
+  BOOST_DISTANCE: 9.5,
+  DASH_DISTANCE: 11,
 
   // Deliberately shallow chase-camera angle: show the road ahead, not a top-down map.
-  HEIGHT_OFFSET: 5.5,
-  BOOST_HEIGHT_OFFSET: 6.2,
+  HEIGHT_OFFSET: 3.2,
+  BOOST_HEIGHT_OFFSET: 3.6,
 
   // FOV settings — dynamically lerped based on speed
   BASE_FOV: 60,   // FOV at minimum speed
@@ -217,7 +217,7 @@ const CameraController: React.FC = () => {
       lookAtTarget.current.set(
         playerPos.x,
         Math.max(0.35, playerPos.y + 0.35),
-        playerPos.z - CAMERA_CONFIG.LOOK_AHEAD
+        playerPos.z - 8.0
       );
       camera.lookAt(lookAtTarget.current);
       camera.rotation.z += dutchTilt.current;

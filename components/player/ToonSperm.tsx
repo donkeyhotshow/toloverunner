@@ -75,8 +75,12 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   const outlineMat = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
-        color: '#000000',
+        color: '#24304A',
         side: THREE.BackSide,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1,
       }),
     []
   );
@@ -239,7 +243,7 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   });
 
   return (
-    <group ref={groupRef} scale={scale} frustumCulled={false}>
+    <group ref={groupRef} scale={scale * 0.82} frustumCulled={false}>
       {/* GLOW EFFECTS (2 layers) */}
       <mesh geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} renderOrder={0} frustumCulled={false} />
       <mesh geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} renderOrder={0} frustumCulled={false} />

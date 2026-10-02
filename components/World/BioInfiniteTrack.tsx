@@ -62,12 +62,10 @@ function createWallGeometry(
   height: number,
   segmentLength: number,
   segL: number
-): THREE.PlaneGeometry {
-  // Authored so local X = along-track length, local Y = vertical height.
-  // After a rotation.y of ±90° the plane stands vertically and runs down the
-  // track (length along world Z, height along world Y), instead of facing the
-  // camera as a flat billboard.
-  const geo = new THREE.PlaneGeometry(segmentLength, height, segL, 4);
+): THREE.BoxGeometry {
+  // A thin box keeps the tunnel walls physically side-on to the road. A plane
+  // can become a camera-facing billboard when its instanced rotation changes.
+  const geo = new THREE.BoxGeometry(0.6, height, segmentLength, 1, 4, segL);
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
   return geo;
@@ -98,7 +96,8 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
     // low so the infinite track does not dominate startup or frame time.
     const segmentsL = 64;
     const wallGap = 0.5;
-    const roadLift = 0.15;
+    // Keep the visual road on the same ground plane as physics.groundY = 0.
+    const roadLift = 0.02;
 
     // --- Refs ---
     const roadMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -132,11 +131,11 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
             uTime: { value: 0 },
             uOffset: { value: 0 },
             uSpeed: { value: speed },
-            uColor1: { value: new THREE.Color('#9A3045') },
-            uColor2: { value: new THREE.Color('#D96575') },
-            uColor3: { value: new THREE.Color('#F09AA0') },
-            uAccent: { value: new THREE.Color('#FFD0A8') },
-            uBioCyan: { value: new THREE.Color('#F5C4A8') },
+            uColor1: { value: new THREE.Color('#17162D') },
+            uColor2: { value: new THREE.Color('#342458') },
+            uColor3: { value: new THREE.Color('#5B3C84') },
+            uAccent: { value: new THREE.Color('#67E8F9') },
+            uBioCyan: { value: new THREE.Color('#FF6FB5') },
             uPulseSpeed: { value: 1.5 },
             uStripeFreq: { value: 20.0 },
             uCellScale: { value: 10.0 },
@@ -209,12 +208,12 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
         const wX = width / 2 + wallGap;
         for (let i = 0; i < segmentCount; i++) {
           dummy.position.set(-wX, wallHeight / 2, positions[i]!);
-          dummy.rotation.set(0, Math.PI / 2, 0);
+          dummy.rotation.set(0, 0, 0);
           dummy.updateMatrix();
           leftWallRef.current.setMatrixAt(i, dummy.matrix);
 
           dummy.position.set(wX, wallHeight / 2, positions[i]!);
-          dummy.rotation.set(0, -Math.PI / 2, 0);
+          dummy.rotation.set(0, 0, 0);
           dummy.updateMatrix();
           rightWallRef.current.setMatrixAt(i, dummy.matrix);
         }
@@ -280,12 +279,12 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
         const wX = width / 2 + wallGap;
         for (let i = 0; i < segmentCount; i++) {
           dummy.position.set(-wX, wallHeight / 2, positions[i]!);
-          dummy.rotation.set(0, Math.PI / 2, 0);
+          dummy.rotation.set(0, 0, 0);
           dummy.updateMatrix();
           leftWallRef.current.setMatrixAt(i, dummy.matrix);
 
           dummy.position.set(wX, wallHeight / 2, positions[i]!);
-          dummy.rotation.set(0, -Math.PI / 2, 0);
+          dummy.rotation.set(0, 0, 0);
           dummy.updateMatrix();
           rightWallRef.current.setMatrixAt(i, dummy.matrix);
         }
