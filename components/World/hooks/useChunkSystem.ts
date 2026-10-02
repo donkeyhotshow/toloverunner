@@ -43,6 +43,9 @@ export const useChunkSystem = (
 
     const lastChunkDistance = useRef(0);
     const isProcessingChunk = useRef(false);
+    const initialBatchesRemaining = useRef(0);
+    const scheduleInitialBatch = useRef<(() => void) | null>(null);
+    const initialBatchTimer = useRef<number | null>(null);
 
     const handleChunkGenerated = useCallback((data: Float32Array) => {
         performance.mark('tolove:obstacles-spawned');
@@ -55,6 +58,7 @@ export const useChunkSystem = (
         // Ensure we don't process if data is empty or invalid
         if (!data || data.length === 0) {
             isProcessingChunk.current = false;
+            scheduleInitialBatch.current?.();
             return;
         }
 
@@ -62,6 +66,7 @@ export const useChunkSystem = (
         const count = Math.floor(data.length / stride);
         if (count === 0) {
             isProcessingChunk.current = false;
+            scheduleInitialBatch.current?.();
             return;
         }
 
@@ -72,6 +77,7 @@ export const useChunkSystem = (
         // Prevent overflow - visual stability
         if (spaceLeft <= 0) {
             isProcessingChunk.current = false;
+            scheduleInitialBatch.current?.();
             return;
         }
 
@@ -152,6 +158,9 @@ export const useChunkSystem = (
         }
 
         isProcessingChunk.current = false;
+        if (initialBatchesRemaining.current > 0) {
+            scheduleInitialBatch.current?.();
+        }
     }, [objectsRef, obstaclesRef, pickupsRef, totalDistanceRef]);
 
     useEffect(() => {
@@ -176,21 +185,49 @@ export const useChunkSystem = (
     }, [procGen, laneCount, biome]);
 
     useEffect(() => {
-        if (isPlaying) {
-            objectsRef.current.forEach(obj => gameObjectPool.release(obj));
-            objectsRef.current = [];
-            obstaclesRef.current = [];
-            pickupsRef.current = [];
-            lastChunkDistance.current = 0;
-            isProcessingChunk.current = true;
-            // Keep the first request large enough to cover the opening view,
-            // but avoid constructing 900 world units before the first frame.
-            const initialChunks = 30;
-            performance.mark('tolove:track-ready');
-            performance.mark('tolove:chunk-requested');
-            procGen.requestChunk(0, initialChunks, laneCount, biome);
-            lastChunkDistance.current = initialChunks * CHUNK_SIZE;
+        if (!isPlaying) {
+            initialBatchesRemaining.current = 0;
+            if (initialBatchTimer.current !== null) {
+                window.clearTimeout(initialBatchTimer.current);
+                initialBatchTimer.current = null;
+            }
+            scheduleInitialBatch.current = null;
+            return;
         }
+
+        objectsRef.current.forEach(obj => gameObjectPool.release(obj));
+        objectsRef.current = [];
+        obstaclesRef.current = [];
+        pickupsRef.current = [];
+        lastChunkDistance.current = 0;
+        initialBatchesRemaining.current = 3;
+
+        const requestNextInitialBatch = () => {
+            if (initialBatchesRemaining.current <= 0) return;
+            initialBatchTimer.current = window.setTimeout(() => {
+                initialBatchTimer.current = null;
+                if (initialBatchesRemaining.current <= 0) return;
+                isProcessingChunk.current = true;
+                const batchSize = 10;
+                performance.mark('tolove:chunk-requested');
+                procGen.requestChunk(-lastChunkDistance.current, batchSize, laneCount, biome);
+                lastChunkDistance.current += batchSize * CHUNK_SIZE;
+                initialBatchesRemaining.current -= 1;
+            }, 0);
+        };
+
+        scheduleInitialBatch.current = requestNextInitialBatch;
+        performance.mark('tolove:track-ready');
+        requestNextInitialBatch();
+
+        return () => {
+            initialBatchesRemaining.current = 0;
+            scheduleInitialBatch.current = null;
+            if (initialBatchTimer.current !== null) {
+                window.clearTimeout(initialBatchTimer.current);
+                initialBatchTimer.current = null;
+            }
+        };
     }, [isPlaying, procGen, laneCount, biome, objectsRef, obstaclesRef, pickupsRef]);
 
     return {
