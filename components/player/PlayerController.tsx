@@ -31,7 +31,9 @@ interface PlayerControllerProps {
  * its centre — so we shift the mesh group by this amount without touching
  * any gameplay logic.
  */
-const MODEL_Y_OFFSET = 0.5;
+// The visual road is rendered at y=0.52; keep the sperm head and tail fully
+// above that surface so the road cannot depth-occlude the player.
+const MODEL_Y_OFFSET = 1.05;
 const BOB_AMPLITUDE = 0.02;
 const BOB_SPEED = 1.8;
 

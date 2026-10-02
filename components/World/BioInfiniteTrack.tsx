@@ -88,7 +88,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
     segmentLength = 200,
     segmentCount = 7,
     enableWalls = true,
-    wallHeight = 6,
+    wallHeight = 2.8,
   }) => {
     // --- Config ---
     const segmentsW = 4;

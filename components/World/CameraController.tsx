@@ -28,8 +28,8 @@ const CAMERA_CONFIG = {
   DASH_DISTANCE: 11,
 
   // Deliberately shallow chase-camera angle: show the road ahead, not a top-down map.
-  HEIGHT_OFFSET: 3.2,
-  BOOST_HEIGHT_OFFSET: 3.6,
+  HEIGHT_OFFSET: 2.6,
+  BOOST_HEIGHT_OFFSET: 2.9,
 
   // FOV settings — dynamically lerped based on speed
   BASE_FOV: 60,   // FOV at minimum speed
