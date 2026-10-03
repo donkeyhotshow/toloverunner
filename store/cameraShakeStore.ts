@@ -30,7 +30,7 @@ export const useCameraShake = create<CameraShakeStore>((set, get) => ({
         set({ duration: newDuration });
 
         if (newDuration <= 0) {
-            set({ intensity: 0 });
+            set({ intensity: 0, maxDuration: 0 });
             return 0;
         }
 

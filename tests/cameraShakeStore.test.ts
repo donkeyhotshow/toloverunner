@@ -31,5 +31,15 @@ describe('camera shake collision feedback', () => {
     expect(useCameraShake.getState().update(0.09)).toBe(0);
     expect(useCameraShake.getState().intensity).toBe(0);
     expect(useCameraShake.getState().duration).toBe(0);
+    expect(useCameraShake.getState().maxDuration).toBe(0);
+  });
+
+  it('starts the next impact with its own fade duration', () => {
+    useCameraShake.getState().shake(0.22, 0.18);
+    useCameraShake.getState().update(0.18);
+    useCameraShake.getState().shake(0.1, 0.06);
+
+    expect(useCameraShake.getState().maxDuration).toBe(0.06);
+    expect(useCameraShake.getState().update(0.03)).toBeCloseTo(0.1 * Math.pow(0.5, 2.5));
   });
 });
