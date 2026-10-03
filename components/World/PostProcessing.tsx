@@ -56,8 +56,8 @@ export const PostProcessing: React.FC = (): React.ReactElement | null => {
     // Subscribe via eventBus — single event system, no window events
     useEffect(() => {
         const unsubHit = eventBus.on('player:hit', () => {
-            hitIntensityRef.current = 0.8;
-            caIntensityRef.current = 1.0; // strong aberration on damage
+            hitIntensityRef.current = 0.45;
+            caIntensityRef.current = 0.45; // bounded damage feedback without a visual snap
         });
         const unsubPerfect = eventBus.on('player:perfect', () => { perfectIntensityRef.current = 0.6; });
         const unsubDash = eventBus.on('player:dash', () => {

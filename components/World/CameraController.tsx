@@ -77,7 +77,8 @@ const CameraController: React.FC = () => {
   useEffect(() => {
     // Subscribe via eventBus — single event system, no window events
     const unsubHit = eventBus.on('player:hit', () => {
-      useCameraShake.getState().shake(1.2, 0.6);
+      // Collision feedback is a short bounded impulse, never a camera teleport.
+      useCameraShake.getState().shake(0.22, 0.18);
       impactLag.current = 1.0;
     });
     const unsubCollect = eventBus.on('player:collect', () => {
@@ -195,11 +196,16 @@ const CameraController: React.FC = () => {
       // Apply camera shake offset (zero when no shake active)
       const shakeMag = useCameraShake.getState().update(delta);
       if (shakeMag > 0) {
-        shakeDirection.current.set(
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2,
-          0
-        ).normalize().multiplyScalar(Math.min(shakeMag * 0.08, CAMERA_CONFIG.MAX_SHAKE));
+        if (shakeDirection.current.lengthSq() === 0) {
+          shakeDirection.current.set(
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2,
+            0
+          ).normalize();
+        }
+        shakeDirection.current.multiplyScalar(
+          Math.min(shakeMag * 0.08, CAMERA_CONFIG.MAX_SHAKE) / Math.max(shakeDirection.current.length(), 0.0001)
+        );
       } else {
         shakeDirection.current.set(0, 0, 0);
       }
