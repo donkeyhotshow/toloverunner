@@ -33,9 +33,9 @@ const CAMERA_CONFIG = {
 
   // FOV settings — dynamically lerped based on speed
   BASE_FOV: 60,   // FOV at minimum speed
-  MAX_FOV: 82,    // FOV at maximum speed
-  DASH_FOV: 95,   // FOV during dash
-  BOOST_FOV: 85,  // FOV during speed boost
+  MAX_FOV: 68,    // Keep the road perspective stable at top speed
+  DASH_FOV: 72,   // Small speed cue without a framing jump
+  BOOST_FOV: 66,  // Small speed cue without a framing jump
 
   // Smoothing
   POSITION_LERP: 5.5,
@@ -63,13 +63,13 @@ const CameraController: React.FC = () => {
   const calculateCameraPosition = (playerPos: Vector3, distance: number, heightOffset: number) => {
     // 🎥 STRICT CAMERA: Camera completely locks horizontally
     const lateralTarget = MathUtils.clamp(
-      playerPos.x * 0.42,
+      playerPos.x * 0.22,
       -CAMERA_CONFIG.MAX_LATERAL_OFFSET,
       CAMERA_CONFIG.MAX_LATERAL_OFFSET
     );
     targetPos.current.set(
       lateralTarget,
-      playerPos.y + heightOffset,
+      heightOffset,
       playerPos.z + distance
     );
   };
@@ -136,8 +136,9 @@ const CameraController: React.FC = () => {
       if (!isIngameState) return;
       if (status === GameStatus.PAUSED) return; // Prevent drift while paused if needed, but usually we want to keep looking
 
-      // Dutch Angle Smoothing
-      dutchTilt.current = MathUtils.lerp(dutchTilt.current, targetDutchTilt.current, delta * 10);
+      // Keep the gameplay horizon level; feedback uses bounded shake instead of roll.
+      targetDutchTilt.current = 0;
+      dutchTilt.current = MathUtils.lerp(dutchTilt.current, 0, 1 - Math.exp(-12 * Math.min(delta, 1 / 20)));
 
       // Decrement Dutch tilt reset timers (frame-rate-independent replacement for setTimeout)
       if (dutchResetTimerA.current > 0) {
@@ -226,8 +227,8 @@ const CameraController: React.FC = () => {
       // Aim near the road surface ahead so the horizon and lane remain visible.
       lookAtTarget.current.set(
         currentPos.current.x,
-        Math.max(0.35, currentPos.current.y - 0.9),
-        currentPos.current.z - 8.0
+        0.75,
+        currentPos.current.z - 6.0
       );
       camera.lookAt(lookAtTarget.current);
       camera.rotation.z += dutchTilt.current;
