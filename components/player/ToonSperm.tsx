@@ -67,6 +67,8 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
         metalness: 0,
         emissive: '#5D78A8',
         emissiveIntensity: 0.18,
+        depthTest: false,
+        depthWrite: false,
       }),
     []
   );
@@ -132,11 +134,13 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   const tailMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#EAF5FF',
-        roughness: 0.38,
+        color: '#D8F1FF',
+        roughness: 0.3,
         metalness: 0,
         emissive: '#5274A8',
         emissiveIntensity: 0.14,
+        depthTest: false,
+        depthWrite: false,
       }),
     []
   );
@@ -243,7 +247,7 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   });
 
   return (
-    <group ref={groupRef} scale={scale * 0.82} frustumCulled={false}>
+    <group ref={groupRef} scale={scale * 0.82} frustumCulled={false} renderOrder={10}>
       {/* GLOW EFFECTS (2 layers) */}
       <mesh geometry={outerGlowGeo} material={outerGlowMat} position={[0, 0.1, 0]} renderOrder={0} frustumCulled={false} />
       <mesh geometry={innerGlowGeo} material={innerGlowMat} position={[0, 0.1, 0]} renderOrder={0} frustumCulled={false} />
@@ -251,7 +255,7 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
       {/* BODY GROUP (squash/stretch target) */}
       <group ref={bodyRef} position={[0, 0, 0]}>
         {/* HEAD */}
-        <mesh ref={headRef} geometry={headGeo} material={bodyMat} position={[0, 0.1, -0.05]} frustumCulled={false}>
+        <mesh ref={headRef} geometry={headGeo} material={bodyMat} position={[0, 0.1, -0.05]} renderOrder={11} frustumCulled={false}>
           {/* HEAD OUTLINE (BackSide, scaled up) */}
           <mesh geometry={headOutlineGeo} material={outlineMat} scale={[1.08, 1.08, 1.08]} frustumCulled={false} />
 
@@ -279,7 +283,7 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
       </group>
 
       {/* TAIL — chain-following segments */}
-      <group ref={tailGroupRef} position={[0, 0, 0]}>
+      <group ref={tailGroupRef} position={[0, 0, 0]} renderOrder={12}>
         {Array.from({ length: TAIL_COUNT }, (_, i) => (
           <mesh
             key={i}
