@@ -44,8 +44,8 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
   // Nucleus inside the head
   const nucleusGeo = useMemo(() => new THREE.SphereGeometry(0.22, 20, 20), []);
   // Glow layers around the head
-  const outerGlowGeo = useMemo(() => new THREE.SphereGeometry(0.78, 24, 24), []);
-  const innerGlowGeo = useMemo(() => new THREE.SphereGeometry(0.62, 24, 24), []);
+  const outerGlowGeo = useMemo(() => new THREE.SphereGeometry(0.62, 24, 24), []);
+  const innerGlowGeo = useMemo(() => new THREE.SphereGeometry(0.54, 24, 24), []);
   // Tail segments — round spheres, tapered
   const tailGeos = useMemo(
     () =>
@@ -108,7 +108,7 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
       new THREE.MeshBasicMaterial({
         color: '#AEE3FF',
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.08,
         side: THREE.BackSide,
         blending: THREE.NormalBlending,
         depthTest: false,
@@ -121,7 +121,7 @@ export const ToonSperm: React.FC<ToonSpermProps> = ({
       new THREE.MeshBasicMaterial({
         color: '#DDEEFF',
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.12,
         side: THREE.BackSide,
         blending: THREE.NormalBlending,
         depthTest: false,
