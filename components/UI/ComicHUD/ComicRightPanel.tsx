@@ -51,13 +51,12 @@ export const ComicRightPanel: React.FC = () => {
                             </motion.div>
                         )}
 
-                        {/* Fire sticker -> Clean icon */}
                         <motion.div
-                            animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
-                            transition={{ repeat: Infinity, duration: 2 }}
-                            className="text-3xl filter drop-shadow-md ml-2"
+                            animate={{ scale: [1, 1.04, 1] }}
+                            transition={{ repeat: Infinity, duration: 1.8 }}
+                            className="ml-2 flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200/30 bg-amber-300/15 text-[9px] font-black uppercase tracking-wider text-amber-100"
                         >
-                            🔥
+                            HOT
                         </motion.div>
                     </div>
                 </motion.div>

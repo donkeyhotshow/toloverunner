@@ -33,7 +33,7 @@ interface PlayerControllerProps {
  */
 // The visual road is rendered at y=0.52; keep the sperm head and tail fully
 // above that surface so the road cannot depth-occlude the player.
-const MODEL_Y_OFFSET = 0.78;
+const MODEL_Y_OFFSET = 0.44;
 const BOB_AMPLITUDE = 0.02;
 const BOB_SPEED = 1.8;
 
@@ -90,7 +90,8 @@ export const PlayerController: React.FC<PlayerControllerProps> = ({
 
     // ── Position: physics Y + model-only visual offset ──
     if (!groupRef.current) return;
-    groupRef.current.position.x = physX;
+    const visualAlpha = 1 - Math.exp(-16 * Math.min(delta, 1 / 20));
+    groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, physX, visualAlpha);
 
     const bob = onGround
       ? Math.sin(clock.elapsedTime * BOB_SPEED) * BOB_AMPLITUDE
@@ -98,7 +99,11 @@ export const PlayerController: React.FC<PlayerControllerProps> = ({
 
     // physY is the physics body Y (0 at ground). MODEL_Y_OFFSET lifts the
     // visual character so its feet touch the ground plane, matching physics.
-    groupRef.current.position.y = physY + MODEL_Y_OFFSET + bob;
+    groupRef.current.position.y = THREE.MathUtils.lerp(
+      groupRef.current.position.y,
+      physY + MODEL_Y_OFFSET + bob,
+      visualAlpha
+    );
     // Z stays at 0 — world moves, player stays centred
   });
 

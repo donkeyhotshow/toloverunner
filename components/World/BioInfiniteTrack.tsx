@@ -163,11 +163,11 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
             uTime: { value: 0 },
             uOffset: { value: 0 },
             uSpeed: { value: speed },
-            uColor1: { value: new THREE.Color('#C06878') },
-            uColor2: { value: new THREE.Color('#D8908A') },
-            uColor3: { value: new THREE.Color('#E8B090') },
-            uAccent: { value: new THREE.Color('#F5C4A8') },
-            uBioCyan: { value: new THREE.Color('#7A1A2A') },
+            uColor1: { value: new THREE.Color('#0B1220') },
+            uColor2: { value: new THREE.Color('#172554') },
+            uColor3: { value: new THREE.Color('#1E3A5F') },
+            uAccent: { value: new THREE.Color('#3B82F6') },
+            uBioCyan: { value: new THREE.Color('#0E7490') },
             uPulseSpeed: { value: 1.5 },
             uCellScale: { value: 5.0 },
             uGlossiness: { value: 0.3 },
@@ -195,7 +195,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
 
       const positions = positionsRef.current;
       for (let i = 0; i < segmentCount; i++) {
-        dummy.position.set(0, 0.5 + roadLift, positions[i]!);
+        dummy.position.set(0, roadLift, positions[i]!);
         dummy.rotation.set(-Math.PI / 2, 0, 0);
         dummy.updateMatrix();
         roadMeshRef.current.setMatrixAt(i, dummy.matrix);
@@ -267,7 +267,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
       // only on recycle leaves the visible road frozen between recycle events.
       if (roadMeshRef.current) {
         for (let i = 0; i < segmentCount; i++) {
-          dummy.position.set(0, 0.5 + roadLift, positions[i]!);
+          dummy.position.set(0, roadLift, positions[i]!);
           dummy.rotation.set(-Math.PI / 2, 0, 0);
           dummy.updateMatrix();
           roadMeshRef.current.setMatrixAt(i, dummy.matrix);

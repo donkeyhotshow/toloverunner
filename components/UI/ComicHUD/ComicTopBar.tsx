@@ -53,9 +53,9 @@ export const ComicTopBar: React.FC = () => {
                     <motion.div 
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="relative bg-black/20 backdrop-blur-md border border-white/20 px-6 py-3 flex items-center gap-4 rounded-xl shadow-lg ring-1 ring-white/10"
+                        className="relative min-w-[132px] bg-slate-950/80 backdrop-blur-xl border border-cyan-200/20 px-4 py-3 flex items-center gap-3 rounded-2xl shadow-2xl ring-1 ring-white/10"
                     >
-                        <span className="text-2xl drop-shadow-md">✨</span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-300/15 text-xs font-black tracking-tight text-cyan-200">PTS</span>
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest leading-none">SCORE</span>
                             <motion.span 
@@ -88,9 +88,9 @@ export const ComicTopBar: React.FC = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="relative bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 flex items-center gap-3 rounded-lg shadow-md self-start"
+                        className="relative bg-slate-950/65 backdrop-blur-xl border border-white/10 px-4 py-2 flex items-center gap-3 rounded-xl shadow-xl self-start"
                     >
-                        <span className="text-lg drop-shadow-md">📐</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200/70">DIST</span>
                         <motion.span 
                             key={Math.floor(distance / 10)}
                             className="text-lg font-medium text-white tabular-nums tracking-wider"
@@ -105,7 +105,7 @@ export const ComicTopBar: React.FC = () => {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="flex items-center gap-2 bg-black/20 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full shadow-lg"
+                    className="flex items-center gap-2 bg-slate-950/80 backdrop-blur-xl border border-rose-200/20 px-4 py-2 rounded-2xl shadow-2xl"
                 >
                     {Array.from({ length: Math.max(1, Math.min(10, maxLives)) }).map((_, i) => (
                         <motion.div
@@ -116,7 +116,7 @@ export const ComicTopBar: React.FC = () => {
                             className={`transition-all duration-300 drop-shadow-md ${i < lives ? 'opacity-100' : 'opacity-20 grayscale'}`}
                             style={{ fontSize: '24px', lineHeight: 1 }}
                         >
-                            ❤️
+                            <span className="block h-2.5 w-5 rounded-full bg-rose-300 shadow-[0_0_10px_rgba(251,113,133,0.55)]" aria-hidden="true" />
                         </motion.div>
                     ))}
                 </motion.div>
@@ -130,7 +130,7 @@ export const ComicTopBar: React.FC = () => {
                         transition={{ delay: 0.15 }}
                         className="relative bg-black/20 backdrop-blur-md border border-white/20 px-5 py-2 flex items-center gap-3 rounded-xl shadow-lg ring-1 ring-white/10"
                     >
-                        <span className="text-xl drop-shadow-md">⏱️</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200/70">TIME</span>
                         <span className="text-xl font-medium text-white tabular-nums min-w-[60px] text-center">
                             {timeDisplay}
                         </span>
