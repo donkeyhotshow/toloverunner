@@ -84,18 +84,18 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
   ({
     playerZ,
     speed = 10,
-    width = 12,
+    width = 10,
     segmentLength = 200,
     segmentCount = 7,
     enableWalls = true,
-    wallHeight = 2.2,
+    wallHeight = 0.9,
   }) => {
     // --- Config ---
     const segmentsW = 4;
     // The road shaders provide the visual detail; keep geometry subdivisions
     // low so the infinite track does not dominate startup or frame time.
     const segmentsL = 64;
-    const wallGap = 1.1;
+    const wallGap = 1.4;
     // Keep the visual road on the same ground plane as physics.groundY = 0.
     const roadLift = 0.02;
 
