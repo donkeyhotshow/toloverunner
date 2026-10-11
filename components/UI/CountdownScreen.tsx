@@ -83,11 +83,6 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({ onComplete }) 
                 )}
             </AnimatePresence>
 
-            {/* Decorative elements */}
-            <div className="absolute top-20 left-20 text-8xl animate-spin-slow">⚡</div>
-            <div className="absolute bottom-20 right-20 text-8xl animate-bounce">💥</div>
-            <div className="absolute top-20 right-20 text-6xl animate-pulse">🔥</div>
-            <div className="absolute bottom-20 left-20 text-6xl animate-ping">💨</div>
         </div>
     );
 };
