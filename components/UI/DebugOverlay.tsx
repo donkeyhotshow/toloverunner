@@ -13,7 +13,7 @@
  * - Delta time
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BarChart2, Activity, Cpu, Eye, Layers } from 'lucide-react';
 import { getPerformanceManager, PerformanceMetrics, QualityLevel } from '../../infrastructure/performance/PerformanceManager';
 import { useStore } from '../../store';
@@ -43,8 +43,6 @@ export const DebugOverlay: React.FC<DebugOverlayProps> = ({
         systemTimings: {},
     });
     const [quality, setQuality] = useState<QualityLevel>(QualityLevel.HIGH);
-    const [fps, setFps] = useState(0);
-    const [frameCount, setFrameCount] = useState(0);
     const [isGameRunning, setIsGameRunning] = useState(false);
 
     const { status, totalDistance, playerY } = useStore((s) => ({
@@ -53,64 +51,43 @@ export const DebugOverlay: React.FC<DebugOverlayProps> = ({
         playerY: s.localPlayerState.position[1]
     }));
 
-    // 🚨 КРИТИЧЕСКАЯ ДИАГНОСТИКА: Проверка работоспособности игры
-    React.useEffect(() => {
-        console.log('🔍 DEBUG OVERLAY: Инициализация диагностики');
-
-        let lastTime = performance.now();
-        let frames = 0;
-        let lastDistance = totalDistance;
-
-        const measureFPS = () => {
-            frames++;
-            const now = performance.now();
-
-            if (now - lastTime >= 1000) {
-                const currentFps = Math.round((frames * 1000) / (now - lastTime));
-                setFps(currentFps);
-                setFrameCount(prev => prev + frames);
-
-                // Проверка активности игры
-                const distanceChanged = totalDistance !== lastDistance;
-                setIsGameRunning(distanceChanged || frameCount > 10);
-
-                console.log(`🎮 FPS: ${currentFps}, Distance: ${totalDistance}, Player Y: ${playerY?.toFixed(3)}, Game Active: ${distanceChanged}`);
-
-                frames = 0;
-                lastTime = now;
-                lastDistance = totalDistance;
-            }
-
-            requestAnimationFrame(measureFPS);
-        };
-
-        const rafId = requestAnimationFrame(measureFPS);
-        return () => cancelAnimationFrame(rafId);
-    }, [totalDistance, playerY, frameCount]);
+    // Track distance across sample windows via a ref so this effect never has to
+    // re-subscribe (no per-frame RAF loop, no console spam, no leak from changing deps).
+    const lastDistanceRef = useRef(totalDistance);
+    useEffect(() => {
+        lastDistanceRef.current = totalDistance;
+    }, [totalDistance]);
 
     useEffect(() => {
+        // Single source of truth for FPS / frame-time / draw calls: PerformanceManager.
+        // Its metrics are already sampled every frame inside the game loop, so the
+        // overlay only has to poll a cached snapshot instead of running its own loop.
         const perfManager = getPerformanceManager();
 
-        // Подписываемся на обновления метрик
         perfManager.onMetricsChanged((newMetrics) => {
             setMetrics(newMetrics);
         });
-
-        // Подписываемся на изменения качества
         perfManager.onQualityChanged((newQuality) => {
             setQuality(newQuality);
         });
 
-        // Обновляем метрики каждые 100ms
         const interval = setInterval(() => {
             setMetrics(perfManager.getMetrics());
             setQuality(perfManager.getCurrentQuality());
-        }, 100);
+
+            // "Game active" heuristic: distance advanced since the last sample.
+            const prev = lastDistanceRef.current;
+            const now = (useStore.getState() as any).totalDistance ?? 0;
+            setIsGameRunning(Math.abs(now - prev) > 0.001);
+            lastDistanceRef.current = now;
+        }, 250);
 
         return () => {
             clearInterval(interval);
         };
     }, []);
+
+    const fps = metrics.fps;
 
     // Скрываем в меню
     if (status === GameStatus.MENU || status === GameStatus.SHOP || !enabled) {
@@ -207,9 +184,9 @@ export const DebugOverlay: React.FC<DebugOverlayProps> = ({
                     textAlign: 'center'
                 }}
             >
-                🎮 СТАТУС ИГРЫ: {isGameRunning ? 'АКТИВНА ✅' : 'ЗАСТЫЛА ❌'}
+                GAME: {isGameRunning ? 'ACTIVE' : 'IDLE'}
                 <br />
-                FPS: {fps} | Distance: {totalDistance.toFixed(1)} | Frames: {frameCount}
+                FPS: {fps} | Frame: {metrics.deltaTime}ms | Dist: {totalDistance.toFixed(1)}
             </div>
 
             {/* FPS */}

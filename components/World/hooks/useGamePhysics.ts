@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import PhysicsEngine from '../../../core/physics/PhysicsEngine';
 import { getPhysicsStabilizer } from '../../../core/physics/PhysicsStabilizer';
@@ -77,9 +77,9 @@ export const useGamePhysics = () => {
         const playerPhysics = physicsEngine.getPlayerPhysics();
         playerPhysics.targetLane = validateLane(pState.lane || 0);
 
-        if (pState.isJumping && !playerPhysics.isJumping && playerPhysics.isGrounded) {
-            playerPhysics.requestJump();
-        }
+        // B-02: Jump is exclusively handled via eventBus ('player:jump_input' → physicsEngine.jump()).
+        // Polling pState.isJumping here would cause a second requestJump() on the next tick,
+        // silently consuming jumpsRemaining and breaking the first-jump→double-jump sequence.
 
         // Handle slide start - only request new slide if not already sliding
         if (pState.isSliding && !playerPhysics.isSliding) {
@@ -225,9 +225,13 @@ export const useGamePhysics = () => {
         const pos = finalPlayer.position;
         const vel = finalPlayer.velocity;
 
-        // Update Store - CRITICAL: Force Y=0.5 for stable ground position
+        // B-01: Write the real physics position.y to the store so UI, fear mechanic,
+        // and any future network layer all see the correct in-air Y.
+        // The old "FORCE Y=0.5" comment was a workaround for a rendering bug that no
+        // longer exists — PlayerController reads interpolated Y from PhysicsStabilizer
+        // directly, so the store value is the authoritative source for non-render systems.
         store.setLocalPlayerState({
-            position: [pos.x, 0.5, pos.z], // FORCE Y=0.5 STABLE
+            position: [pos.x, pos.y, pos.z],
             velocity: [vel.x, vel.y, vel.z],
             isJumping: finalPlayer.isJumping,
             isDoubleJumping: finalPlayer.isDoubleJumping,
