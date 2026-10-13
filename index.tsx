@@ -6,6 +6,17 @@ import * as THREE from 'three';
 
 // Sentry will be initialized in App.tsx to avoid double initialization
 
+const reportBootstrapError = (kind: string, detail: unknown) => {
+  console.error(`[ToLOVE Runner] ${kind}`, detail);
+};
+
+window.addEventListener('error', (event) => {
+  reportBootstrapError('Unhandled runtime error', event.error ?? event.message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  reportBootstrapError('Unhandled promise rejection', event.reason);
+});
+
 // Configure THREE.js globally before any renderers are created
 THREE.ColorManagement.enabled = true;
 

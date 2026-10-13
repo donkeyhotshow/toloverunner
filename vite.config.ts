@@ -40,7 +40,9 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      https: httpsConfig || undefined,
+      // Keep the v0 preview on plain HTTP; automatic local HTTPS makes the
+      // preview proxy request http://localhost:3000 fail with 502.
+      https: undefined,
       hmr: {
         overlay: false,
       },

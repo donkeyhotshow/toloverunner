@@ -49,15 +49,10 @@ function createRoadGeometry(
 ): THREE.PlaneGeometry {
   const geo = new THREE.PlaneGeometry(width, segmentLength, segW, segL);
 
-  // FORCE Y=0.5 for all vertices (FLAT ROAD)
-  const posAttr = geo.attributes.position;
-  if (posAttr) {
-    const positions = posAttr.array as Float32Array;
-    for (let i = 1; i < positions.length; i += 3) {
-      positions[i] = 0.5;
-    }
-  }
-
+  // PlaneGeometry is authored in the XY plane: local X is road width and
+  // local Y is track length. The instance matrix rotates it onto XZ while
+  // preserving the full segment length; collapsing local Y would create a
+  // degenerate line and make the road disappear.
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
   return geo;
@@ -67,12 +62,10 @@ function createWallGeometry(
   height: number,
   segmentLength: number,
   segL: number
-): THREE.PlaneGeometry {
-  // Authored so local X = along-track length, local Y = vertical height.
-  // After a rotation.y of ±90° the plane stands vertically and runs down the
-  // track (length along world Z, height along world Y), instead of facing the
-  // camera as a flat billboard.
-  const geo = new THREE.PlaneGeometry(segmentLength, height, segL, 4);
+): THREE.BoxGeometry {
+  // A thin box keeps the tunnel walls physically side-on to the road. A plane
+  // can become a camera-facing billboard when its instanced rotation changes.
+  const geo = new THREE.BoxGeometry(0.6, height, segmentLength, 1, 4, segL);
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
   return geo;
@@ -91,16 +84,20 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
   ({
     playerZ,
     speed = 10,
-    width = 12,
+    width = 10,
     segmentLength = 200,
     segmentCount = 7,
     enableWalls = true,
-    wallHeight = 10,
+    wallHeight = 0.9,
   }) => {
     // --- Config ---
     const segmentsW = 4;
-    const segmentsL = 256;
-    const wallGap = 0.5;
+    // The road shaders provide the visual detail; keep geometry subdivisions
+    // low so the infinite track does not dominate startup or frame time.
+    const segmentsL = 64;
+    const wallGap = 1.4;
+    // Keep the visual road on the same ground plane as physics.groundY = 0.
+    const roadLift = 0.02;
 
     // --- Refs ---
     const roadMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -134,11 +131,11 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
             uTime: { value: 0 },
             uOffset: { value: 0 },
             uSpeed: { value: speed },
-            uColor1: { value: new THREE.Color('#7A1A2A') },
-            uColor2: { value: new THREE.Color('#A03040') },
-            uColor3: { value: new THREE.Color('#C05060') },
-            uAccent: { value: new THREE.Color('#E8906A') },
-            uBioCyan: { value: new THREE.Color('#F5C4A8') },
+            uColor1: { value: new THREE.Color('#17162D') },
+            uColor2: { value: new THREE.Color('#342458') },
+            uColor3: { value: new THREE.Color('#5B3C84') },
+            uAccent: { value: new THREE.Color('#67E8F9') },
+            uBioCyan: { value: new THREE.Color('#FF6FB5') },
             uPulseSpeed: { value: 1.5 },
             uStripeFreq: { value: 20.0 },
             uCellScale: { value: 10.0 },
@@ -150,6 +147,9 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
           side: THREE.DoubleSide,
           depthWrite: true,
           depthTest: true,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1,
         }),
       []
     );
@@ -163,11 +163,11 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
             uTime: { value: 0 },
             uOffset: { value: 0 },
             uSpeed: { value: speed },
-            uColor1: { value: new THREE.Color('#C06878') },
-            uColor2: { value: new THREE.Color('#D8908A') },
-            uColor3: { value: new THREE.Color('#E8B090') },
-            uAccent: { value: new THREE.Color('#F5C4A8') },
-            uBioCyan: { value: new THREE.Color('#7A1A2A') },
+            uColor1: { value: new THREE.Color('#0B1220') },
+            uColor2: { value: new THREE.Color('#172554') },
+            uColor3: { value: new THREE.Color('#1E3A5F') },
+            uAccent: { value: new THREE.Color('#3B82F6') },
+            uBioCyan: { value: new THREE.Color('#0E7490') },
             uPulseSpeed: { value: 1.5 },
             uCellScale: { value: 5.0 },
             uGlossiness: { value: 0.3 },
@@ -195,7 +195,7 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
 
       const positions = positionsRef.current;
       for (let i = 0; i < segmentCount; i++) {
-        dummy.position.set(0, 0, positions[i]!);
+        dummy.position.set(0, roadLift, positions[i]!);
         dummy.rotation.set(-Math.PI / 2, 0, 0);
         dummy.updateMatrix();
         roadMeshRef.current.setMatrixAt(i, dummy.matrix);
@@ -208,24 +208,27 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
         const wX = width / 2 + wallGap;
         for (let i = 0; i < segmentCount; i++) {
           dummy.position.set(-wX, wallHeight / 2, positions[i]!);
-          dummy.rotation.set(0, Math.PI / 2, 0);
+          dummy.rotation.set(0, 0, 0);
           dummy.updateMatrix();
           leftWallRef.current.setMatrixAt(i, dummy.matrix);
 
           dummy.position.set(wX, wallHeight / 2, positions[i]!);
-          dummy.rotation.set(0, -Math.PI / 2, 0);
+          dummy.rotation.set(0, 0, 0);
           dummy.updateMatrix();
           rightWallRef.current.setMatrixAt(i, dummy.matrix);
         }
         leftWallRef.current.instanceMatrix.needsUpdate = true;
         rightWallRef.current.instanceMatrix.needsUpdate = true;
       }
-    }, [segmentCount, width, wallHeight, wallGap, dummy]);
+    }, [segmentCount, width, wallHeight, wallGap, roadLift, dummy]);
 
     // --- Game loop ---
     const elapsedRef = useRef(0);
 
-    useFrame(({ camera }, delta) => {
+    useFrame(({ camera }, rawDelta) => {
+      // A tab switch or debugger pause can produce a multi-second delta. Clamp
+      // it so the track cannot teleport through several recycle boundaries.
+      const delta = Math.min(rawDelta, 1 / 20);
       elapsedRef.current += delta;
       const elapsed = elapsedRef.current;
 
@@ -241,59 +244,52 @@ export const BioInfiniteTrack: React.FC<BioInfiniteTrackProps> = React.memo(
       if (wu.uOffset) wu.uOffset.value = elapsed * speed;
       if (wu.uSpeed) wu.uSpeed.value = speed;
 
-      // Move segments
+      // Move segments and calculate the recycle target once per frame.
       const positions = positionsRef.current;
-      let recycled = false;
       const segLen = segmentLength;
+      const movement = speed * delta;
+      let maxZ = -Infinity;
+      for (let i = 0; i < segmentCount; i++) {
+        const nextZ = (positions[i] ?? 0) - movement;
+        positions[i] = nextZ;
+        if (nextZ > maxZ) maxZ = nextZ;
+      }
 
       for (let i = 0; i < segmentCount; i++) {
-        positions[i] = (positions[i] ?? 0) - speed * delta;
-
-        // Recycle segment that passed behind player
         if ((positions[i] ?? 0) < playerZ - segLen * 2) {
-          // Find the furthest segment
-          let maxZ = -Infinity;
-          for (let j = 0; j < segmentCount; j++) {
-            const pz = positions[j] ?? 0;
-            if (pz > maxZ) maxZ = pz;
-          }
-          // Snap-to-grid: eliminate float32 accumulation error on recycle
-          const rawPos = maxZ + segLen;
-          positions[i] = Math.round(rawPos * 1000) / 1000;
-          recycled = true;
+          // Snap-to-grid: eliminate float32 accumulation error on recycle.
+          positions[i] = Math.round((maxZ + segLen) * 1000) / 1000;
+          maxZ = positions[i]!;
         }
       }
 
-      // Only update matrices when recycling occurred
-      if (recycled) {
-        // Road
-        if (roadMeshRef.current) {
-          for (let i = 0; i < segmentCount; i++) {
-            dummy.position.set(0, 0, positions[i]!);
-            dummy.rotation.set(-Math.PI / 2, 0, 0);
-            dummy.updateMatrix();
-            roadMeshRef.current.setMatrixAt(i, dummy.matrix);
-          }
-          roadMeshRef.current.instanceMatrix.needsUpdate = true;
+      // Keep matrices synchronized with the moving segment positions. Updating
+      // only on recycle leaves the visible road frozen between recycle events.
+      if (roadMeshRef.current) {
+        for (let i = 0; i < segmentCount; i++) {
+          dummy.position.set(0, roadLift, positions[i]!);
+          dummy.rotation.set(-Math.PI / 2, 0, 0);
+          dummy.updateMatrix();
+          roadMeshRef.current.setMatrixAt(i, dummy.matrix);
         }
+        roadMeshRef.current.instanceMatrix.needsUpdate = true;
+      }
 
-        // Walls
-        if (leftWallRef.current && rightWallRef.current) {
-          const wX = width / 2 + wallGap;
-          for (let i = 0; i < segmentCount; i++) {
-            dummy.position.set(-wX, wallHeight / 2, positions[i]!);
-            dummy.rotation.set(0, Math.PI / 2, 0);
-            dummy.updateMatrix();
-            leftWallRef.current.setMatrixAt(i, dummy.matrix);
+      if (leftWallRef.current && rightWallRef.current) {
+        const wX = width / 2 + wallGap;
+        for (let i = 0; i < segmentCount; i++) {
+          dummy.position.set(-wX, wallHeight / 2, positions[i]!);
+          dummy.rotation.set(0, 0, 0);
+          dummy.updateMatrix();
+          leftWallRef.current.setMatrixAt(i, dummy.matrix);
 
-            dummy.position.set(wX, wallHeight / 2, positions[i]!);
-            dummy.rotation.set(0, -Math.PI / 2, 0);
-            dummy.updateMatrix();
-            rightWallRef.current.setMatrixAt(i, dummy.matrix);
-          }
-          leftWallRef.current.instanceMatrix.needsUpdate = true;
-          rightWallRef.current.instanceMatrix.needsUpdate = true;
+          dummy.position.set(wX, wallHeight / 2, positions[i]!);
+          dummy.rotation.set(0, 0, 0);
+          dummy.updateMatrix();
+          rightWallRef.current.setMatrixAt(i, dummy.matrix);
         }
+        leftWallRef.current.instanceMatrix.needsUpdate = true;
+        rightWallRef.current.instanceMatrix.needsUpdate = true;
       }
     });
 

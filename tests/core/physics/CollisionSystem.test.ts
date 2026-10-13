@@ -73,4 +73,59 @@ describe('CollisionSystem', () => {
     expect(result.hit).toBe(true);
     expect(result.object?.id).toBe('pickup');
   });
+
+  it('uses explicit obstacle width for wide dodge barriers', () => {
+    const barrier: GameObject = {
+      id: 'wide-dodge',
+      type: ObjectType.OBSTACLE_DODGE,
+      position: [1.1, 0, 0],
+      width: 2,
+      active: true
+    };
+
+    const result = CollisionSystem.prototype.checkSimple.call(
+      new CollisionSystem(),
+      0,
+      0,
+      [barrier],
+      0
+    );
+    expect(result.hit).toBe(true);
+  });
+
+  it('catches a fast Z crossing with CCD', () => {
+    const obstacle: GameObject = {
+      id: 'fast-crossing',
+      type: ObjectType.OBSTACLE,
+      position: [0, 0, -0.2],
+      active: true
+    };
+
+    const result = CollisionSystem.checkWithCCD(
+      0,
+      0,
+      0,
+      0,
+      45,
+      [obstacle],
+      0.8,
+      -0.8
+    );
+    expect(result.hit).toBe(true);
+    expect(result.object?.id).toBe('fast-crossing');
+  });
+
+  it('allows a slide under a high barrier but hits without slide', () => {
+    const barrier: GameObject = {
+      id: 'slide-barrier',
+      type: ObjectType.OBSTACLE_SLIDE,
+      position: [0, 2.2, 0],
+      width: 1,
+      active: true
+    };
+
+    const system = new CollisionSystem();
+    expect(system.checkSimple(0, 0, [barrier], 0, 0, false, true).hit).toBe(false);
+    expect(system.checkSimple(0, 0, [barrier], 0, 0, false, false).hit).toBe(true);
+  });
 });

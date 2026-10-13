@@ -97,7 +97,7 @@ export const ComicLeftPanel: React.FC = () => {
                     className="relative z-10 font-medium text-white select-none drop-shadow-md"
                     style={{ fontSize: '24px' }}
                 >
-                    ⚡
+                    <span className="text-[11px] font-black tracking-[0.18em]">DASH</span>
                 </motion.span>
             </motion.div>
             

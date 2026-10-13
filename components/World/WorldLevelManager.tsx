@@ -35,7 +35,6 @@ import { useChunkSystem } from './hooks/useChunkSystem';
 import { useGamePhysics } from './hooks/useGamePhysics';
 import { useTrackSystem } from './hooks/useTrackSystem';
 import { gameObjectPool } from './SharedPool';
-import ComicVFX from '../Effects/ComicVFX';
 import FinishEgg from './FinishEgg';
 
 import VirusObstacles from './VirusObstacle';
@@ -79,6 +78,7 @@ export const WorldLevelManager: React.FC = React.memo(() => {
     // Reset Track System on play
     useEffect(() => {
         if (isPlaying) {
+            performance.mark('tolove:world-loop-ready');
             trackSystem.reset();
             totalDistanceRef.current = 0;
             accumulatedScoreDistance.current = 0;
@@ -275,8 +275,7 @@ export const WorldLevelManager: React.FC = React.memo(() => {
             />
             <WarningIndicator objectsRef={obstaclesRef} totalDistanceRef={totalDistanceRef} />
 
-            {/* 💥 Comic-style visual effects */}
-            <ComicVFX />
+
             {/* 🏁 🎨 VQC: Гигантское яйцо на финише */}
             <FinishEgg totalDistanceRef={totalDistanceRef} />
         </group>

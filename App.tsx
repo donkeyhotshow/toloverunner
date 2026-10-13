@@ -27,11 +27,6 @@ const LazyDynamicEvents = React.lazy(() =>
   import('./components/Gameplay/DynamicEvents').then((m) => ({ default: m.DynamicEvents }))
 );
 
-// RESTORED: Visual effects
-const LazyPostProcessing = React.lazy(() =>
-  import('./components/World/PostProcessing').then(m => ({ default: m.PostProcessing }))
-);
-
 import { FPSCounter } from './components/UI/FPSCounter';
 import { EnhancedLoadingScreen } from './components/UI/EnhancedLoadingScreen';
 import { useStore } from './store';
@@ -42,16 +37,25 @@ import { BrowserStabilityController } from './components/System/BrowserStability
 import { GameStatus } from './types';
 import { DebugOverlay } from './components/UI/DebugOverlay';
 import { RenderController } from './components/System/RenderController';
-import { StableErrorBoundary } from './components/System/StableErrorBoundary';
 import { RenderDebugger } from './components/System/RenderDebugger';
-import SceneController from './components/World/SceneController';
+const LazySceneController = React.lazy(() => import('./components/World/SceneController'));
+
+const SceneMountMarker: React.FC = () => {
+  useEffect(() => {
+    performance.mark('tolove:scene-mounted');
+    try {
+      performance.measure('tolove:renderer-to-scene', 'tolove:renderer-ready', 'tolove:scene-mounted');
+    } catch {
+      // The renderer mark may be unavailable in test environments.
+    }
+  }, []);
+  return null;
+};
 
 import { GameplayFeedbackUI } from './components/UI/GameplayFeedbackUI';
 import { EnhancedControls } from './components/Input/EnhancedControls';
 import { AssetShowcase } from './components/Debug/AssetShowcase';
 import { VintageOverlay } from './components/UI/VintageOverlay';
-import { CurvedWorldEffect } from './components/Effects/CurvedWorldEffect';
-import SpeedLinesEffect from './components/Effects/SpeedLinesEffect'; // 🔥 NEW: Imported SpeedLinesEffect
 import { ComicPopupSystem } from './components/Effects/ComicPopupSystem';
 import { UIStack } from './components/UI/UIStack';
 // import { MicroPlankton } from './components/Effects/MicroPlankton'; // Moved to Environment.tsx
@@ -176,8 +180,10 @@ const AppContent: React.FC = () => {
           {/* 📰 PAPER TEXTURE OVERLAY - Comic print effect */}
           <div className="paper-texture-overlay" />
 
-          {/* Texture preloading */}
-          <TexturePreloader />
+          {/* Gameplay textures are not needed for the menu's first paint. */}
+          {(status === GameStatus.PLAYING || status === GameStatus.COUNTDOWN) && (
+            <TexturePreloader />
+          )}
 
           <UIStack>
             {/* UI Overlay */}
@@ -193,13 +199,14 @@ const AppContent: React.FC = () => {
             <Canvas
               data-testid="game-canvas"
               shadows={false}
-              dpr={[1, 2]}
+              // Cap DPR to keep frame pacing stable on high-density displays.
+              dpr={[1, 1.5]}
               gl={{
                 antialias: true,
                 alpha: false,
                 stencil: false,
                 depth: true,
-                logarithmicDepthBuffer: true, // 🛡️ HIGH PRECISION: Solves Z-fighting at distance
+                logarithmicDepthBuffer: false,
                 powerPreference: 'high-performance',
                 precision: 'highp',
                 toneMapping: THREE.ACESFilmicToneMapping, // 🔥 ENABLED: Cinematic lighting
@@ -217,7 +224,25 @@ const AppContent: React.FC = () => {
               }}
               frameloop="always"
               onCreated={({ scene, camera, gl }) => {
-                debugLog('✅ Canvas created - Renderer Ready');
+                performance.mark('tolove:renderer-ready');
+                debugLog('Canvas created - renderer ready');
+                document.documentElement.dataset.renderReady = 'true';
+                window.dispatchEvent(new CustomEvent('tolove:renderer-ready'));
+
+                const canvas = gl.domElement;
+                const handleContextLost = (event: Event) => {
+                  event.preventDefault();
+                  debugLog('WebGL context lost; waiting for browser recovery');
+                };
+                const handleContextRestored = () => {
+                  gl.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+                  gl.resetState();
+                  debugLog('WebGL context restored');
+                };
+                if (canvas) {
+                  canvas.addEventListener('webglcontextlost', handleContextLost, false);
+                  canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
+                }
 
                 scene.background = new THREE.Color('#1a0515'); // Dark organic purple
                 scene.fog = new THREE.FogExp2('#1a0515', 0.001); // Slightly denser organic fog
@@ -245,13 +270,9 @@ const AppContent: React.FC = () => {
               {status === GameStatus.MENU && <ambientLight intensity={1.5} />}
               {status === GameStatus.MENU && <directionalLight position={[0, 10, 5]} intensity={2} />}
 
-              {/* Curved World Effect for Perfect Polish */}
-              <CurvedWorldEffect />
+              {/* Heavy post/curvature effects are disabled in the stable baseline. */}
 
-              {/* 🔥 NEW: Speed Lines Effect for Velocity Feedback */}
-              {!zenMode && <SpeedLinesEffect />}
-
-              {/* 💬 COMIC POPUPS: Text Effects */}
+              {/* Comic popups remain lightweight and UI-only. */}
               {!zenMode && <ComicPopupSystem />}
 
 
@@ -259,22 +280,20 @@ const AppContent: React.FC = () => {
 
               {showGameScene && (
                 <Suspense fallback={null}>
-                  <SceneController />
+                  <SceneMountMarker />
+                  <LazySceneController />
                 </Suspense>
               )}
 
-              {showGameScene && (
-                <StableErrorBoundary fallback={null}>
-                  <Suspense fallback={null}>
-                    <LazyPostProcessing />
-                  </Suspense>
-                </StableErrorBoundary>
-              )}
+              {/* Post-processing is intentionally off in the stable baseline. */}
 
-              {/* DynamicEvents MUST be inside Canvas to use useThree() */}
-              <Suspense fallback={null}>
-                <LazyDynamicEvents />
-              </Suspense>
+              {/* DynamicEvents uses gameplay-only subscriptions and stays out of
+                  the menu/countdown render path. */}
+              {(status === GameStatus.PLAYING || status === GameStatus.COUNTDOWN) && (
+                <Suspense fallback={null}>
+                  <LazyDynamicEvents />
+                </Suspense>
+              )}
 
               <EnhancedControls />
             </Canvas>

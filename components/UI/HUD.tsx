@@ -24,7 +24,6 @@ import { GameOverScreen } from './HUD/GameOverScreen';
 import { VictoryScreen } from './HUD/VictoryScreen';
 import { ShopScreen } from './HUD/ShopScreen';
 import { MainMenuScreen } from './HUD/MainMenuScreen';
-import { ComicFeedback } from './ComicFeedback';
 import { GrazeFeedback } from './GrazeFeedback';
 import { ComboDisplay } from './HUD/ComboDisplay';
 
@@ -70,8 +69,7 @@ export const HUD: React.FC = React.memo(() => {
                     <>
                         <PerfectTimingIndicator />
                         <JumpPopup />
-                        <ComicFeedback />
-                        <GrazeFeedback />
+                                              <GrazeFeedback />
                         <ComboDisplay />
                     </>
                 )}

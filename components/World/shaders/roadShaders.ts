@@ -130,10 +130,16 @@ export const roadFragmentShader = /* glsl */ `
     vec3 baseColor = mix(uColor1, uColor2, stripe * 0.6 + cells * 0.4);
     baseColor = mix(baseColor, uAccent, stripe2 * 0.15 + cells2 * 0.1);
 
-    // Apply organic detail
-    baseColor *= 0.85 + organicDetail * 0.3;
+  // Apply organic detail
+  baseColor *= 0.85 + organicDetail * 0.3;
 
-    // Apply cellular texture
+  // Stable lane guides make the floor plane readable against the tunnel wall.
+  float laneLeft = 1.0 - smoothstep(0.0, 0.018, abs(vUv.x - 0.25));
+  float laneRight = 1.0 - smoothstep(0.0, 0.018, abs(vUv.x - 0.75));
+  float laneGlow = max(laneLeft, laneRight);
+  baseColor = mix(baseColor, uAccent, laneGlow * 0.72);
+
+  // Apply cellular texture
     baseColor *= 0.9 + cells2 * 0.2;
 
     // Apply pulse

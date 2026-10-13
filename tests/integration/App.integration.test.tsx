@@ -194,7 +194,8 @@ describe('App Component Integration', () => {
         expect(screen.getByTestId('hud')).toBeInTheDocument();
         expect(screen.getByTestId('fps-counter')).toBeInTheDocument();
         expect(screen.getByTestId('debug-overlay')).toBeInTheDocument();
-        expect(screen.getByTestId('texture-preloader')).toBeInTheDocument();
+        // Critical textures are deferred until countdown/gameplay to protect menu LCP.
+        expect(screen.queryByTestId('texture-preloader')).not.toBeInTheDocument();
       });
     });
 

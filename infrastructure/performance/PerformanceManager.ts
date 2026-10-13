@@ -152,6 +152,7 @@ export class PerformanceManager {
 
     // Periodic metric sampler (5s)
     private metricSamplerId: number | null = null;
+    private started = false;
     private readonly METRIC_SAMPLE_INTERVAL_MS = 5000;
     private metricsLog: PerformanceMetrics[] = [];
     // Telemetry counters (accumulate between metric samples)
@@ -175,6 +176,9 @@ export class PerformanceManager {
      * Запустить мониторинг производительности
      */
     start() {
+        if (this.started) return;
+        this.started = true;
+
         // Guard: stop any existing sampler before (re)starting
         if (this.metricSamplerId !== null) {
             window.clearInterval(this.metricSamplerId);
@@ -647,6 +651,8 @@ export class PerformanceManager {
      * Остановить мониторинг
      */
     stop() {
+        if (!this.started) return;
+        this.started = false;
         this.fpsHistory = [];
 
         // CRITICAL FIX: Clear metric sampler interval to prevent memory leaks

@@ -7,7 +7,7 @@
  * EnhancedControls (mounted in App.tsx) owns all input handling.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../../store';
 import { GameStatus } from '../../types';
 
@@ -30,9 +30,14 @@ export const SceneController: React.FC = () => {
   const speed = useStore(s => s.speed || 1.0);
   const showWorld = status !== GameStatus.MENU;
 
+  useEffect(() => {
+    if (showWorld) performance.mark('tolove:world-ready');
+  }, [showWorld]);
+
   return (
     <>
-      <GameLoopRunner />
+      {/* The menu has no simulation callbacks to run. */}
+      {showWorld && <GameLoopRunner />}
       {showWorld && <TunnelOnly />}
       {showWorld && <Environment />}
       {showWorld && <PlayerController visible={true} speed={speed} />}

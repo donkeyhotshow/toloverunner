@@ -7,6 +7,8 @@
 
 import React, { useRef, useMemo, useEffect } from 'react';
 import { InstancedMesh, Object3D, MeshToonMaterial, Color } from 'three';
+
+const WHITE_TINT = new Color('#FFFFFF');
 import { SelectiveOutline } from './SelectiveOutline';
 import { GameObject, ObjectType, BiomeType, BiomeConfig } from '../../types';
 import { getGeometryPool } from '../../infrastructure/rendering/GeometryPool';
@@ -102,13 +104,13 @@ export const NewObstaclesRenderer: React.FC<{
             const cfg: BiomeConfig | undefined = BIOME_CONFIG[biome];
             if (!cfg) return;
             // 🩸 Maintain partial biological white but tint with biome
-            jumpMat.color.set(cfg.roadColor).lerp(new Color('#FFFFFF'), 0.5);
+            jumpMat.color.set(cfg.roadColor).lerp(WHITE_TINT, 0.5);
             jumpMat.emissive.set(cfg.glowColor).multiplyScalar(0.2);
             
-            slideMat.color.set(cfg.accentColor).lerp(new Color('#FFFFFF'), 0.4);
+            slideMat.color.set(cfg.accentColor).lerp(WHITE_TINT, 0.4);
             slideMat.emissive.set(cfg.glowColor).multiplyScalar(0.2);
             
-            dodgeMat.color.set(cfg.wallColor).lerp(new Color('#FFFFFF'), 0.6);
+            dodgeMat.color.set(cfg.wallColor).lerp(WHITE_TINT, 0.6);
             dodgeMat.emissive.set(cfg.glowColor).multiplyScalar(0.2);
         } catch {
             // ignore

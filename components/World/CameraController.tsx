@@ -24,23 +24,25 @@ const CAMERA_CONFIG = {
   FIXED_SCREEN_Y: -0.2,   // Slightly below center
 
   // Distance settings
-  BASE_DISTANCE: 12,
-  BOOST_DISTANCE: 15,
-  DASH_DISTANCE: 18,
+  BASE_DISTANCE: 8,
+  BOOST_DISTANCE: 9.5,
+  DASH_DISTANCE: 11,
 
-  // Height offset from player
-  HEIGHT_OFFSET: 3.0,
-  BOOST_HEIGHT_OFFSET: 4.0,
+  // Deliberately shallow chase-camera angle: show the road ahead, not a top-down map.
+  HEIGHT_OFFSET: 2.6,
+  BOOST_HEIGHT_OFFSET: 2.9,
 
   // FOV settings — dynamically lerped based on speed
   BASE_FOV: 60,   // FOV at minimum speed
-  MAX_FOV: 82,    // FOV at maximum speed
-  DASH_FOV: 95,   // FOV during dash
-  BOOST_FOV: 85,  // FOV during speed boost
+  MAX_FOV: 68,    // Keep the road perspective stable at top speed
+  DASH_FOV: 72,   // Small speed cue without a framing jump
+  BOOST_FOV: 66,  // Small speed cue without a framing jump
 
   // Smoothing
-  POSITION_LERP: 8.0,
-  FOV_LERP: 4.0,
+  POSITION_LERP: 5.5,
+  FOV_LERP: 2.5,
+  MAX_LATERAL_OFFSET: 1.25,
+  MAX_SHAKE: 0.08,
 
   // Look-ahead distance
   LOOK_AHEAD: 5.0
@@ -61,9 +63,14 @@ const CameraController: React.FC = () => {
 
   const calculateCameraPosition = (playerPos: Vector3, distance: number, heightOffset: number) => {
     // 🎥 STRICT CAMERA: Camera completely locks horizontally
+    const lateralTarget = MathUtils.clamp(
+      playerPos.x * 0.22,
+      -CAMERA_CONFIG.MAX_LATERAL_OFFSET,
+      CAMERA_CONFIG.MAX_LATERAL_OFFSET
+    );
     targetPos.current.set(
-      playerPos.x, // Perfect X follow, no horizontal offset
-      playerPos.y + heightOffset,
+      lateralTarget,
+      heightOffset,
       playerPos.z + distance
     );
   };
@@ -71,7 +78,8 @@ const CameraController: React.FC = () => {
   useEffect(() => {
     // Subscribe via eventBus — single event system, no window events
     const unsubHit = eventBus.on('player:hit', () => {
-      useCameraShake.getState().shake(1.2, 0.6);
+      // Collision feedback is a short bounded impulse, never a camera teleport.
+      useCameraShake.getState().shake(0.22, 0.18);
       impactLag.current = 1.0;
     });
     const unsubCollect = eventBus.on('player:collect', () => {
@@ -172,12 +180,8 @@ const CameraController: React.FC = () => {
       let targetFOV: number;
       if (gameState.isDashing) {
         targetFOV = CAMERA_CONFIG.DASH_FOV;
-        // High-frequency shake during dash for kinetic energy feel
-        useCameraShake.getState().shake(0.18, 0.05);
       } else if (gameState.speedBoostActive) {
         targetFOV = CAMERA_CONFIG.BOOST_FOV;
-        // Continuous micro-shake during speed boost (re-triggered each frame, short duration)
-        useCameraShake.getState().shake(0.12, 0.06);
       } else {
         const speedRange = Math.max(1, GAMEPLAY_CONFIG.MAX_SPEED - RUN_SPEED_BASE);
         const speedT = Math.min(1, Math.max(0, (gameState.speed - RUN_SPEED_BASE) / speedRange));
@@ -193,11 +197,16 @@ const CameraController: React.FC = () => {
       // Apply camera shake offset (zero when no shake active)
       const shakeMag = useCameraShake.getState().update(delta);
       if (shakeMag > 0) {
-        shakeDirection.current.set(
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2,
-          0
-        ).normalize().multiplyScalar(shakeMag * 0.3);
+        if (shakeDirection.current.lengthSq() === 0) {
+          shakeDirection.current.set(
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2,
+            0
+          ).normalize();
+        }
+        shakeDirection.current.multiplyScalar(
+          Math.min(shakeMag * 0.08, CAMERA_CONFIG.MAX_SHAKE) / Math.max(shakeDirection.current.length(), 0.0001)
+        );
       } else {
         shakeDirection.current.set(0, 0, 0);
       }
@@ -216,10 +225,11 @@ const CameraController: React.FC = () => {
       }
 
       // Look slightly ahead of the player, with dutch tilt applied
+      // Aim near the road surface ahead so the horizon and lane remain visible.
       lookAtTarget.current.set(
-        playerPos.x,
-        playerPos.y + 1.0,
-        playerPos.z - CAMERA_CONFIG.LOOK_AHEAD
+        currentPos.current.x,
+        0.75,
+        currentPos.current.z - 6.0
       );
       camera.lookAt(lookAtTarget.current);
       camera.rotation.z += dutchTilt.current;

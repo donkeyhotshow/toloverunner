@@ -12,7 +12,16 @@ export const useCameraShake = create<CameraShakeStore>((set, get) => ({
     intensity: 0,
     duration: 0,
     maxDuration: 0, // 🔥 Track initial duration for linear fade
-    shake: (intensity, duration) => set({ intensity, duration, maxDuration: duration }),
+    shake: (intensity, duration) =>
+        set((state) => {
+            const nextIntensity = Math.min(Math.max(intensity, 0), 0.22);
+            const nextDuration = Math.min(Math.max(duration, 0), 0.18);
+            return {
+                intensity: Math.max(state.intensity, nextIntensity),
+                duration: Math.max(state.duration, nextDuration),
+                maxDuration: Math.max(state.maxDuration ?? 0, nextDuration),
+            };
+        }),
     update: (delta) => {
         const { intensity, duration, maxDuration } = get();
         if (duration <= 0) return 0;
@@ -21,7 +30,7 @@ export const useCameraShake = create<CameraShakeStore>((set, get) => ({
         set({ duration: newDuration });
 
         if (newDuration <= 0) {
-            set({ intensity: 0 });
+            set({ intensity: 0, maxDuration: 0 });
             return 0;
         }
 

@@ -66,7 +66,9 @@ test.describe('Gameplay Current State Tests', () => {
     test('3. Controls work correctly', async ({ page }) => {
         // Start game
         await page.click('text=START GAME');
-        await page.waitForTimeout(4000); // Wait for countdown + start
+        await page.waitForFunction(() => {
+            return (window as any).__TOLOVERUNNER_STORE__?.getState?.().status === 'PLAYING';
+        }, undefined, { timeout: 10000 }); // Wait for countdown + start
         
         // Get initial state
         const initialState = await page.evaluate(() => {
@@ -132,7 +134,9 @@ test.describe('Gameplay Current State Tests', () => {
 
         // Start game
         await page.click('text=START GAME');
-        await page.waitForTimeout(4000);
+        await page.waitForFunction(() => {
+            return (window as any).__TOLOVERUNNER_STORE__?.getState?.().status === 'PLAYING';
+        }, undefined, { timeout: 10000 });
         
         // Run for 10 seconds
         await page.waitForTimeout(10000);
@@ -155,7 +159,9 @@ test.describe('Gameplay Current State Tests', () => {
     test('5. Collision detection works', async ({ page }) => {
         // Start game
         await page.click('text=START GAME');
-        await page.waitForTimeout(4000);
+        await page.waitForFunction(() => {
+            return (window as any).__TOLOVERUNNER_STORE__?.getState?.().status === 'PLAYING';
+        }, undefined, { timeout: 10000 });
         
         // Get initial lives
         const initialLives = await page.evaluate(() => {
@@ -181,7 +187,9 @@ test.describe('Gameplay Current State Tests', () => {
     test('6. Game Over triggers correctly', async ({ page }) => {
         // Start game
         await page.click('text=START GAME');
-        await page.waitForTimeout(4000);
+        await page.waitForFunction(() => {
+            return (window as any).__TOLOVERUNNER_STORE__?.getState?.().status === 'PLAYING';
+        }, undefined, { timeout: 10000 });
         
         // Force game over with proper invincibility timing
         await page.evaluate(() => {
